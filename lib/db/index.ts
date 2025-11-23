@@ -10,6 +10,11 @@ const pool = new Pool({
   max: 20,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 2000,
+  // Force IPv4 to avoid IPv6 issues with Supabase
+  family: 4,
+  ssl: {
+    rejectUnauthorized: false
+  }
 });
 
 export default pool;
