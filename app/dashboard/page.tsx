@@ -32,7 +32,7 @@ interface Registration {
 }
 
 export default function DashboardPage() {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
   const router = useRouter();
   const [stats, setStats] = useState<any>({});
   const [projects, setProjects] = useState<Project[]>([]);
@@ -48,12 +48,14 @@ export default function DashboardPage() {
   });
 
   useEffect(() => {
+    if (loading) return; // Wait for auth check to complete
+    
     if (!user) {
       router.push('/?login=true');
       return;
     }
     fetchDashboardData();
-  }, [user]);
+  }, [user, loading]);
 
   const fetchDashboardData = async () => {
     const token = localStorage.getItem('token');
@@ -121,6 +123,17 @@ export default function DashboardPage() {
     }
   };
 
+  if (loading) {
+    return (
+      <div className="flex min-h-screen bg-gray-950 items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-400">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
   if (!user) return null;
 
   return (
@@ -139,7 +152,7 @@ export default function DashboardPage() {
                   <Users className="w-12 h-12 text-white" />
                 </div>
                 <div>
-                  <h1 className="text-3xl font-bold mb-2">{user.full_name || user.fullName}</h1>
+                  <h1 className="text-3xl font-bold mb-2">{user.fullName}</h1>
                   <div className="flex items-center gap-3 mb-3">
                     <span className="px-4 py-1.5 bg-white/20 backdrop-blur-sm rounded-full text-sm font-semibold border border-white/30">
                       {user.role.charAt(0).toUpperCase() + user.role.slice(1)}

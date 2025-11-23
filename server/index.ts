@@ -825,6 +825,134 @@ app.get('/api/judges', authenticate, authorize('organizer'), async (req: AuthReq
   }
 });
 
+// ============ DASHBOARD ROUTES ============
+
+// Get dashboard stats
+app.get('/api/dashboard/stats', authenticate, async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user!.userId;
+    const role = req.user!.role;
+
+    if (role === 'hacker') {
+      const registrations = await pool.query(
+        'SELECT COUNT(*) as count FROM registrations WHERE user_id = $1',
+        [userId]
+      );
+      
+      const projects = await pool.query(
+        'SELECT COUNT(*) as count FROM projects WHERE user_id = $1',
+        [userId]
+      );
+
+      res.json({
+        hackathonsRegistered: parseInt(registrations.rows[0]?.count || '0'),
+        projectsSubmitted: parseInt(projects.rows[0]?.count || '0'),
+        wins: 0 // TODO: Calculate from rankings
+      });
+    } else if (role === 'judge') {
+      const judging = await pool.query(
+        'SELECT COUNT(*) as count FROM hackathon_judges WHERE judge_id = $1',
+        [userId]
+      );
+
+      res.json({
+        hackathonsJudging: parseInt(judging.rows[0]?.count || '0'),
+        projectsScored: 0 // TODO: Calculate from scores
+      });
+    } else if (role === 'organizer') {
+      const hackathons = await pool.query(
+        'SELECT COUNT(*) as count FROM hackathons WHERE organizer_id = $1',
+        [userId]
+      );
+
+      const participants = await pool.query(
+        `SELECT COUNT(DISTINCT r.user_id) as count 
+         FROM registrations r
+         JOIN hackathons h ON r.hackathon_id = h.id
+         WHERE h.organizer_id = $1`,
+        [userId]
+      );
+
+      const projects = await pool.query(
+        `SELECT COUNT(*) as count 
+         FROM projects p
+         JOIN hackathons h ON p.hackathon_id = h.id
+         WHERE h.organizer_id = $1`,
+        [userId]
+      );
+
+      res.json({
+        hackathonsOrganized: parseInt(hackathons.rows[0]?.count || '0'),
+        totalParticipants: parseInt(participants.rows[0]?.count || '0'),
+        totalProjects: parseInt(projects.rows[0]?.count || '0')
+      });
+    }
+  } catch (error) {
+    console.error('Error fetching dashboard stats:', error);
+    res.status(500).json({ error: 'Failed to fetch stats' });
+  }
+});
+
+// ============ PROJECT ROUTES ============
+
+// Get user's projects
+app.get('/api/users/me/projects', authenticate, async (req: AuthRequest, res: Response) => {
+  try {
+    const result = await pool.query(
+      `SELECT p.*, h.name as hackathon_name
+       FROM projects p
+       LEFT JOIN hackathons h ON p.hackathon_id = h.id
+       WHERE p.user_id = $1
+       ORDER BY p.created_at DESC`,
+      [req.user!.userId]
+    );
+
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error fetching user projects:', error);
+    res.status(500).json({ error: 'Failed to fetch projects' });
+  }
+});
+
+// Create project
+app.post('/api/projects', authenticate, async (req: AuthRequest, res: Response) => {
+  try {
+    const { title, description, github_url, demo_url, image_url, tags } = req.body;
+
+    const result = await pool.query(
+      `INSERT INTO projects (user_id, title, description, github_url, demo_url, image_url, tags)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       RETURNING *`,
+      [req.user!.userId, title, description, github_url, demo_url, image_url, tags]
+    );
+
+    res.status(201).json(result.rows[0]);
+  } catch (error) {
+    console.error('Error creating project:', error);
+    res.status(500).json({ error: 'Failed to create project' });
+  }
+});
+
+// Get user's registrations
+app.get('/api/users/me/registrations', authenticate, async (req: AuthRequest, res: Response) => {
+  try {
+    const result = await pool.query(
+      `SELECT r.*, h.name as hackathon_name, h.start_date, h.end_date, 
+              h.status, h.total_prize_pool
+       FROM registrations r
+       JOIN hackathons h ON r.hackathon_id = h.id
+       WHERE r.user_id = $1
+       ORDER BY h.start_date DESC`,
+      [req.user!.userId]
+    );
+
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error fetching user registrations:', error);
+    res.status(500).json({ error: 'Failed to fetch registrations' });
+  }
+});
+
 // Health check
 app.get('/health', (req: Request, res: Response) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
