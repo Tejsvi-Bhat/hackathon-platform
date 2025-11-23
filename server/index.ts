@@ -899,11 +899,14 @@ app.get('/api/dashboard/stats', authenticate, async (req: AuthRequest, res: Resp
 app.get('/api/users/me/projects', authenticate, async (req: AuthRequest, res: Response) => {
   try {
     const result = await pool.query(
-      `SELECT p.*, h.name as hackathon_name
+      `SELECT DISTINCT p.id, p.name as title, p.description, p.github_url, 
+              p.demo_url, p.video_url as image_url, p.submitted_at as created_at,
+              h.name as hackathon_name, ARRAY[]::text[] as tags
        FROM projects p
        LEFT JOIN hackathons h ON p.hackathon_id = h.id
-       WHERE p.user_id = $1
-       ORDER BY p.created_at DESC`,
+       LEFT JOIN project_members pm ON p.id = pm.project_id
+       WHERE pm.user_id = $1
+       ORDER BY p.submitted_at DESC`,
       [req.user!.userId]
     );
 
@@ -917,16 +920,34 @@ app.get('/api/users/me/projects', authenticate, async (req: AuthRequest, res: Re
 // Create project
 app.post('/api/projects', authenticate, async (req: AuthRequest, res: Response) => {
   try {
-    const { title, description, github_url, demo_url, image_url, tags } = req.body;
+    const { title, description, github_url, demo_url, image_url, tags, hackathon_id } = req.body;
+
+    // Generate a unique blockchain_project_id
+    const maxIdResult = await pool.query('SELECT MAX(blockchain_project_id) as max FROM projects');
+    const nextId = (maxIdResult.rows[0]?.max || 0) + 1;
 
     const result = await pool.query(
-      `INSERT INTO projects (user_id, title, description, github_url, demo_url, image_url, tags)
+      `INSERT INTO projects (blockchain_project_id, hackathon_id, name, description, github_url, demo_url, video_url)
        VALUES ($1, $2, $3, $4, $5, $6, $7)
        RETURNING *`,
-      [req.user!.userId, title, description, github_url, demo_url, image_url, tags]
+      [nextId, hackathon_id || null, title, description, github_url, demo_url, image_url]
     );
 
-    res.status(201).json(result.rows[0]);
+    const projectId = result.rows[0].id;
+
+    // Add creator as team member
+    await pool.query(
+      `INSERT INTO project_members (project_id, user_id, role)
+       VALUES ($1, $2, $3)`,
+      [projectId, req.user!.userId, 'Team Lead']
+    );
+
+    res.status(201).json({
+      ...result.rows[0],
+      title: result.rows[0].name,
+      image_url: result.rows[0].video_url,
+      tags: tags || []
+    });
   } catch (error) {
     console.error('Error creating project:', error);
     res.status(500).json({ error: 'Failed to create project' });
