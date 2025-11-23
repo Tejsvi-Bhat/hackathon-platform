@@ -148,6 +148,18 @@ app.post('/api/auth/logout', (req: Request, res: Response) => {
   res.json({ message: 'Logged out successfully' });
 });
 
+// Test bcrypt hash (temporary)
+app.post('/api/auth/test-hash', async (req: Request, res: Response) => {
+  try {
+    const { password, hash } = req.body;
+    const isValid = await bcrypt.compare(password, hash);
+    const newHash = await bcrypt.hash(password, 10);
+    res.json({ isValid, newHash, providedHash: hash });
+  } catch (error) {
+    res.status(500).json({ error: 'Test failed' });
+  }
+});
+
 // ============ HACKATHON ROUTES ============
 
 // Get all hackathons (public)
