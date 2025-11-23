@@ -276,13 +276,36 @@ app.get('/api/hackathons/:id', async (req: Request, res: Response) => {
 // Create hackathon (organizers only)
 app.post('/api/hackathons', authenticate, authorize('organizer'), async (req: AuthRequest, res: Response) => {
   try {
-    const { name, description, startDate, endDate, blockchainId } = req.body;
+    const { 
+      name, description, start_date, end_date, registration_deadline,
+      ecosystem, tech_stack, level, mode, min_team_size, max_team_size,
+      banner_image, is_featured
+    } = req.body;
     
+    // Generate unique blockchain_id
+    const maxIdResult = await pool.query('SELECT MAX(blockchain_id) as max FROM hackathons');
+    const nextId = (maxIdResult.rows[0]?.max || 0) + 1;
+
+    // Determine status based on dates
+    const now = new Date();
+    const startDate = new Date(start_date);
+    const endDate = new Date(end_date);
+    let status = 'upcoming';
+    if (now >= startDate && now <= endDate) status = 'ongoing';
+    if (now > endDate) status = 'completed';
+
     const result = await pool.query(
-      `INSERT INTO hackathons (blockchain_id, name, description, start_date, end_date, organizer_id, organizer_address, status)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      `INSERT INTO hackathons (
+        blockchain_id, name, description, start_date, end_date, registration_deadline,
+        organizer_id, organizer_address, status, is_active, banner_image,
+        ecosystem, tech_stack, level, mode, max_team_size, min_team_size, is_featured
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
        RETURNING *`,
-      [blockchainId, name, description, startDate, endDate, req.user!.userId, req.user!.walletAddress, 'upcoming']
+      [
+        nextId, name, description, start_date, end_date, registration_deadline,
+        req.user!.userId, req.user!.walletAddress, status, true, banner_image,
+        ecosystem, tech_stack, level, mode, max_team_size, min_team_size, is_featured || false
+      ]
     );
 
     res.status(201).json(result.rows[0]);
@@ -971,6 +994,26 @@ app.get('/api/users/me/registrations', authenticate, async (req: AuthRequest, re
   } catch (error) {
     console.error('Error fetching user registrations:', error);
     res.status(500).json({ error: 'Failed to fetch registrations' });
+  }
+});
+
+// Get organizer's hackathons
+app.get('/api/users/me/hackathons', authenticate, authorize('organizer'), async (req: AuthRequest, res: Response) => {
+  try {
+    const result = await pool.query(
+      `SELECT h.*, 
+        (SELECT COUNT(*) FROM registrations WHERE hackathon_id = h.id) as participant_count,
+        (SELECT COUNT(*) FROM projects WHERE hackathon_id = h.id) as project_count
+       FROM hackathons h
+       WHERE h.organizer_id = $1
+       ORDER BY h.start_date DESC`,
+      [req.user!.userId]
+    );
+
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error fetching organizer hackathons:', error);
+    res.status(500).json({ error: 'Failed to fetch hackathons' });
   }
 });
 
