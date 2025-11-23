@@ -112,9 +112,9 @@ export default function Sidebar() {
                       }`}
                     />
                   </button>
-                  {isExpanded && (
-                    <div className="ml-8 mt-1 space-y-1">
-                      {item.subItems.map((subItem) => (
+                {isExpanded && (
+                  <div className="ml-8 mt-1 space-y-1">
+                    {item.subItems?.map((subItem) => (
                         <Link
                           key={subItem.href}
                           href={subItem.href}
