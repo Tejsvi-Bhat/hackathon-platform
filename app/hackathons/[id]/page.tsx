@@ -126,14 +126,15 @@ export default function HackathonDetailPage() {
 
   const fetchHackathonDetails = async () => {
     try {
-      const response = await fetch(`http://localhost:3001/api/hackathons/${params.id}`);
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+      const response = await fetch(`${apiUrl}/api/hackathons/${params.id}`);
       if (!response.ok) throw new Error('Failed to fetch');
       const data = await response.json();
       setHackathon(data);
 
       const token = localStorage.getItem('token');
       if (token) {
-        const regResponse = await fetch(`http://localhost:3001/api/hackathons/${params.id}/check-registration`, {
+        const regResponse = await fetch(`${apiUrl}/api/hackathons/${params.id}/check-registration`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         if (regResponse.ok) {
@@ -157,7 +158,8 @@ export default function HackathonDetailPage() {
 
     setRegistering(true);
     try {
-      const response = await fetch(`http://localhost:3001/api/hackathons/${params.id}/register`, {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+      const response = await fetch(`${apiUrl}/api/hackathons/${params.id}/register`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
