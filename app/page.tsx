@@ -56,7 +56,8 @@ export default function HomePage() {
 
   const fetchHackathons = async () => {
     try {
-      const response = await fetch('http://localhost:3001/api/hackathons');
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+      const response = await fetch(`${apiUrl}/api/hackathons`);
       const data = await response.json();
       if (Array.isArray(data)) {
         setHackathons(data);
