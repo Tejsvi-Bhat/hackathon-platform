@@ -1,0 +1,176 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import Link from 'next/link';
+import { useAuth } from '@/lib/AuthContext';
+
+interface Hackathon {
+  id: number;
+  name: string;
+  description: string;
+  start_date: string;
+  end_date: string;
+  status: string;
+  organizer_name: string;
+  participant_count: number;
+  project_count: number;
+}
+
+export default function HomePage() {
+  const { user } = useAuth();
+  const [hackathons, setHackathons] = useState<{
+    ongoing: Hackathon[];
+    upcoming: Hackathon[];
+    completed: Hackathon[];
+  }>({ ongoing: [], upcoming: [], completed: [] });
+
+  useEffect(() => {
+    fetchHackathons();
+  }, []);
+
+  const fetchHackathons = async () => {
+    try {
+      const response = await fetch('http://localhost:3001/api/hackathons');
+      if (!response.ok) {
+        console.error('Failed to fetch hackathons:', response.status);
+        return;
+      }
+      const data = await response.json();
+      
+      // Ensure data is an array
+      if (!Array.isArray(data)) {
+        console.error('API returned non-array data:', data);
+        return;
+      }
+      
+      setHackathons({
+        ongoing: data.filter((h: Hackathon) => h.status === 'ongoing'),
+        upcoming: data.filter((h: Hackathon) => h.status === 'upcoming'),
+        completed: data.filter((h: Hackathon) => h.status === 'completed')
+      });
+    } catch (error) {
+      console.error('Failed to fetch hackathons:', error);
+    }
+  };
+
+  const formatDate = (date: string) => {
+    return new Date(date).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    });
+  };
+
+  const HackathonCard = ({ hackathon }: { hackathon: Hackathon }) => (
+    <div className="border rounded-lg p-6 hover:shadow-lg transition-shadow bg-white">
+      <div className="flex justify-between items-start mb-3">
+        <h3 className="text-xl font-bold text-gray-900">{hackathon.name}</h3>
+        <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+          hackathon.status === 'ongoing' ? 'bg-green-100 text-green-800' :
+          hackathon.status === 'upcoming' ? 'bg-blue-100 text-blue-800' :
+          'bg-gray-100 text-gray-800'
+        }`}>
+          {hackathon.status.charAt(0).toUpperCase() + hackathon.status.slice(1)}
+        </span>
+      </div>
+      <p className="text-gray-600 mb-4 line-clamp-2">{hackathon.description}</p>
+      <div className="flex justify-between items-center text-sm text-gray-500 mb-4">
+        <span>📅 {formatDate(hackathon.start_date)} - {formatDate(hackathon.end_date)}</span>
+      </div>
+      <div className="flex justify-between items-center text-sm mb-4">
+        <span className="text-gray-600">👥 {hackathon.participant_count} participants</span>
+        <span className="text-gray-600">💡 {hackathon.project_count} projects</span>
+      </div>
+      <div className="flex gap-2">
+        <Link 
+          href={`/hackathons/${hackathon.id}`}
+          className="flex-1 text-center bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition"
+        >
+          View Details
+        </Link>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <header className="bg-white shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <div className="flex justify-between items-center">
+            <h1 className="text-2xl font-bold text-gray-900">🚀 Hackathon Platform</h1>
+            <div className="flex gap-4">
+              {user ? (
+                <Link 
+                  href="/dashboard"
+                  className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition"
+                >
+                  Dashboard
+                </Link>
+              ) : (
+                <>
+                  <Link 
+                    href="/login"
+                    className="border border-blue-600 text-blue-600 px-6 py-2 rounded-lg hover:bg-blue-50 transition"
+                  >
+                    Login
+                  </Link>
+                  <Link 
+                    href="/register"
+                    className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition"
+                  >
+                    Register
+                  </Link>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      </header>
+
+      {/* Hero */}
+      <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white py-16">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <h2 className="text-4xl font-bold mb-4">Build, Innovate, Win!</h2>
+          <p className="text-xl mb-8">Join blockchain-powered hackathons</p>
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <section className="mb-12">
+          <h2 className="text-3xl font-bold text-gray-900 mb-6">🔴 Live Now</h2>
+          {hackathons.ongoing.length > 0 ? (
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {hackathons.ongoing.map((h) => <HackathonCard key={h.id} hackathon={h} />)}
+            </div>
+          ) : (
+            <p className="text-gray-500 text-center py-8">No ongoing hackathons</p>
+          )}
+        </section>
+
+        <section className="mb-12">
+          <h2 className="text-3xl font-bold text-gray-900 mb-6">📅 Upcoming</h2>
+          {hackathons.upcoming.length > 0 ? (
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {hackathons.upcoming.map((h) => <HackathonCard key={h.id} hackathon={h} />)}
+            </div>
+          ) : (
+            <p className="text-gray-500 text-center py-8">No upcoming hackathons</p>
+          )}
+        </section>
+
+        <section>
+          <h2 className="text-3xl font-bold text-gray-900 mb-6">✅ Completed</h2>
+          {hackathons.completed.length > 0 ? (
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {hackathons.completed.map((h) => <HackathonCard key={h.id} hackathon={h} />)}
+            </div>
+          ) : (
+            <p className="text-gray-500 text-center py-8">No completed hackathons</p>
+          )}
+        </section>
+      </div>
+    </div>
+  );
+}

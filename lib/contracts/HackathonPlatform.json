@@ -1,0 +1,915 @@
+{
+  "address": "0x5FbDB2315678afecb367f032d93F642f64180aa3",
+  "abi": [
+    {
+      "type": "event",
+      "anonymous": false,
+      "name": "HackathonCreated",
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "id",
+          "indexed": true
+        },
+        {
+          "type": "string",
+          "name": "name",
+          "indexed": false
+        },
+        {
+          "type": "address",
+          "name": "organizer",
+          "indexed": false
+        }
+      ]
+    },
+    {
+      "type": "event",
+      "anonymous": false,
+      "name": "JudgeAdded",
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "hackathonId",
+          "indexed": true
+        },
+        {
+          "type": "address",
+          "name": "judge",
+          "indexed": false
+        }
+      ]
+    },
+    {
+      "type": "event",
+      "anonymous": false,
+      "name": "PrizeAdded",
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "hackathonId",
+          "indexed": true
+        },
+        {
+          "type": "uint256",
+          "name": "prizeId",
+          "indexed": false
+        },
+        {
+          "type": "string",
+          "name": "title",
+          "indexed": false
+        }
+      ]
+    },
+    {
+      "type": "event",
+      "anonymous": false,
+      "name": "ProjectScored",
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "projectId",
+          "indexed": true
+        },
+        {
+          "type": "address",
+          "name": "judge",
+          "indexed": false
+        }
+      ]
+    },
+    {
+      "type": "event",
+      "anonymous": false,
+      "name": "ProjectSubmitted",
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "projectId",
+          "indexed": true
+        },
+        {
+          "type": "uint256",
+          "name": "hackathonId",
+          "indexed": false
+        },
+        {
+          "type": "string",
+          "name": "name",
+          "indexed": false
+        }
+      ]
+    },
+    {
+      "type": "event",
+      "anonymous": false,
+      "name": "ScheduleAdded",
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "hackathonId",
+          "indexed": true
+        },
+        {
+          "type": "uint256",
+          "name": "scheduleId",
+          "indexed": false
+        }
+      ]
+    },
+    {
+      "type": "event",
+      "anonymous": false,
+      "name": "ScoresReleased",
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "hackathonId",
+          "indexed": true
+        }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "addJudge",
+      "constant": false,
+      "payable": false,
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "_hackathonId"
+        },
+        {
+          "type": "address",
+          "name": "_judge"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "type": "function",
+      "name": "addPrize",
+      "constant": false,
+      "payable": false,
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "_hackathonId"
+        },
+        {
+          "type": "string",
+          "name": "_title"
+        },
+        {
+          "type": "string",
+          "name": "_description"
+        },
+        {
+          "type": "uint256",
+          "name": "_amount"
+        },
+        {
+          "type": "uint256",
+          "name": "_position"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "type": "function",
+      "name": "addSchedule",
+      "constant": false,
+      "payable": false,
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "_hackathonId"
+        },
+        {
+          "type": "string",
+          "name": "_eventName"
+        },
+        {
+          "type": "string",
+          "name": "_description"
+        },
+        {
+          "type": "uint256",
+          "name": "_eventTime"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "type": "function",
+      "name": "areScoresReleased",
+      "constant": true,
+      "stateMutability": "view",
+      "payable": false,
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "_hackathonId"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "createHackathon",
+      "constant": false,
+      "payable": false,
+      "inputs": [
+        {
+          "type": "string",
+          "name": "_name"
+        },
+        {
+          "type": "string",
+          "name": "_description"
+        },
+        {
+          "type": "uint256",
+          "name": "_startDate"
+        },
+        {
+          "type": "uint256",
+          "name": "_endDate"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "getHackathon",
+      "constant": true,
+      "stateMutability": "view",
+      "payable": false,
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "_id"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "tuple",
+          "components": [
+            {
+              "type": "uint256",
+              "name": "id"
+            },
+            {
+              "type": "string",
+              "name": "name"
+            },
+            {
+              "type": "string",
+              "name": "description"
+            },
+            {
+              "type": "uint256",
+              "name": "startDate"
+            },
+            {
+              "type": "uint256",
+              "name": "endDate"
+            },
+            {
+              "type": "address",
+              "name": "organizer"
+            },
+            {
+              "type": "bool",
+              "name": "isActive"
+            },
+            {
+              "type": "uint256",
+              "name": "createdAt"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "getPrizes",
+      "constant": true,
+      "stateMutability": "view",
+      "payable": false,
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "_hackathonId"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "tuple[]",
+          "components": [
+            {
+              "type": "uint256",
+              "name": "id"
+            },
+            {
+              "type": "uint256",
+              "name": "hackathonId"
+            },
+            {
+              "type": "string",
+              "name": "title"
+            },
+            {
+              "type": "string",
+              "name": "description"
+            },
+            {
+              "type": "uint256",
+              "name": "amount"
+            },
+            {
+              "type": "uint256",
+              "name": "position"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "getProjectScores",
+      "constant": true,
+      "stateMutability": "view",
+      "payable": false,
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "_hackathonId"
+        },
+        {
+          "type": "uint256",
+          "name": "_projectId"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "tuple[]",
+          "components": [
+            {
+              "type": "uint256",
+              "name": "projectId"
+            },
+            {
+              "type": "address",
+              "name": "judge"
+            },
+            {
+              "type": "uint256",
+              "name": "technicalScore"
+            },
+            {
+              "type": "uint256",
+              "name": "innovationScore"
+            },
+            {
+              "type": "uint256",
+              "name": "presentationScore"
+            },
+            {
+              "type": "uint256",
+              "name": "impactScore"
+            },
+            {
+              "type": "string",
+              "name": "feedback"
+            },
+            {
+              "type": "uint256",
+              "name": "scoredAt"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "getProjects",
+      "constant": true,
+      "stateMutability": "view",
+      "payable": false,
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "_hackathonId"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "tuple[]",
+          "components": [
+            {
+              "type": "uint256",
+              "name": "id"
+            },
+            {
+              "type": "uint256",
+              "name": "hackathonId"
+            },
+            {
+              "type": "string",
+              "name": "name"
+            },
+            {
+              "type": "string",
+              "name": "description"
+            },
+            {
+              "type": "string",
+              "name": "githubUrl"
+            },
+            {
+              "type": "string",
+              "name": "demoUrl"
+            },
+            {
+              "type": "address[]",
+              "name": "teamMembers"
+            },
+            {
+              "type": "uint256",
+              "name": "submittedAt"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "getSchedules",
+      "constant": true,
+      "stateMutability": "view",
+      "payable": false,
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "_hackathonId"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "tuple[]",
+          "components": [
+            {
+              "type": "uint256",
+              "name": "id"
+            },
+            {
+              "type": "uint256",
+              "name": "hackathonId"
+            },
+            {
+              "type": "string",
+              "name": "eventName"
+            },
+            {
+              "type": "string",
+              "name": "description"
+            },
+            {
+              "type": "uint256",
+              "name": "eventTime"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "hackathonCount",
+      "constant": true,
+      "stateMutability": "view",
+      "payable": false,
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "hackathonJudges",
+      "constant": true,
+      "stateMutability": "view",
+      "payable": false,
+      "inputs": [
+        {
+          "type": "uint256"
+        },
+        {
+          "type": "address"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "hackathonPrizes",
+      "constant": true,
+      "stateMutability": "view",
+      "payable": false,
+      "inputs": [
+        {
+          "type": "uint256"
+        },
+        {
+          "type": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "uint256",
+          "name": "id"
+        },
+        {
+          "type": "uint256",
+          "name": "hackathonId"
+        },
+        {
+          "type": "string",
+          "name": "title"
+        },
+        {
+          "type": "string",
+          "name": "description"
+        },
+        {
+          "type": "uint256",
+          "name": "amount"
+        },
+        {
+          "type": "uint256",
+          "name": "position"
+        }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "hackathonProjects",
+      "constant": true,
+      "stateMutability": "view",
+      "payable": false,
+      "inputs": [
+        {
+          "type": "uint256"
+        },
+        {
+          "type": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "uint256",
+          "name": "id"
+        },
+        {
+          "type": "uint256",
+          "name": "hackathonId"
+        },
+        {
+          "type": "string",
+          "name": "name"
+        },
+        {
+          "type": "string",
+          "name": "description"
+        },
+        {
+          "type": "string",
+          "name": "githubUrl"
+        },
+        {
+          "type": "string",
+          "name": "demoUrl"
+        },
+        {
+          "type": "uint256",
+          "name": "submittedAt"
+        }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "hackathonSchedules",
+      "constant": true,
+      "stateMutability": "view",
+      "payable": false,
+      "inputs": [
+        {
+          "type": "uint256"
+        },
+        {
+          "type": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "uint256",
+          "name": "id"
+        },
+        {
+          "type": "uint256",
+          "name": "hackathonId"
+        },
+        {
+          "type": "string",
+          "name": "eventName"
+        },
+        {
+          "type": "string",
+          "name": "description"
+        },
+        {
+          "type": "uint256",
+          "name": "eventTime"
+        }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "hackathons",
+      "constant": true,
+      "stateMutability": "view",
+      "payable": false,
+      "inputs": [
+        {
+          "type": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "uint256",
+          "name": "id"
+        },
+        {
+          "type": "string",
+          "name": "name"
+        },
+        {
+          "type": "string",
+          "name": "description"
+        },
+        {
+          "type": "uint256",
+          "name": "startDate"
+        },
+        {
+          "type": "uint256",
+          "name": "endDate"
+        },
+        {
+          "type": "address",
+          "name": "organizer"
+        },
+        {
+          "type": "bool",
+          "name": "isActive"
+        },
+        {
+          "type": "uint256",
+          "name": "createdAt"
+        }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "isJudge",
+      "constant": true,
+      "stateMutability": "view",
+      "payable": false,
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "_hackathonId"
+        },
+        {
+          "type": "address",
+          "name": "_address"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "prizeCount",
+      "constant": true,
+      "stateMutability": "view",
+      "payable": false,
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "projectCount",
+      "constant": true,
+      "stateMutability": "view",
+      "payable": false,
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "projectScores",
+      "constant": true,
+      "stateMutability": "view",
+      "payable": false,
+      "inputs": [
+        {
+          "type": "uint256"
+        },
+        {
+          "type": "uint256"
+        },
+        {
+          "type": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "uint256",
+          "name": "projectId"
+        },
+        {
+          "type": "address",
+          "name": "judge"
+        },
+        {
+          "type": "uint256",
+          "name": "technicalScore"
+        },
+        {
+          "type": "uint256",
+          "name": "innovationScore"
+        },
+        {
+          "type": "uint256",
+          "name": "presentationScore"
+        },
+        {
+          "type": "uint256",
+          "name": "impactScore"
+        },
+        {
+          "type": "string",
+          "name": "feedback"
+        },
+        {
+          "type": "uint256",
+          "name": "scoredAt"
+        }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "releaseScores",
+      "constant": false,
+      "payable": false,
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "_hackathonId"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "type": "function",
+      "name": "scheduleCount",
+      "constant": true,
+      "stateMutability": "view",
+      "payable": false,
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "scoreProject",
+      "constant": false,
+      "payable": false,
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "_hackathonId"
+        },
+        {
+          "type": "uint256",
+          "name": "_projectId"
+        },
+        {
+          "type": "uint256",
+          "name": "_technicalScore"
+        },
+        {
+          "type": "uint256",
+          "name": "_innovationScore"
+        },
+        {
+          "type": "uint256",
+          "name": "_presentationScore"
+        },
+        {
+          "type": "uint256",
+          "name": "_impactScore"
+        },
+        {
+          "type": "string",
+          "name": "_feedback"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "type": "function",
+      "name": "scoresReleased",
+      "constant": true,
+      "stateMutability": "view",
+      "payable": false,
+      "inputs": [
+        {
+          "type": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "submitProject",
+      "constant": false,
+      "payable": false,
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "_hackathonId"
+        },
+        {
+          "type": "string",
+          "name": "_name"
+        },
+        {
+          "type": "string",
+          "name": "_description"
+        },
+        {
+          "type": "string",
+          "name": "_githubUrl"
+        },
+        {
+          "type": "string",
+          "name": "_demoUrl"
+        },
+        {
+          "type": "address[]",
+          "name": "_teamMembers"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "uint256"
+        }
+      ]
+    }
+  ]
+}
