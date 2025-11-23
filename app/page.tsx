@@ -6,6 +6,9 @@ import Sidebar from './components/Sidebar';
 import TopNav from './components/TopNav';
 import { ChevronLeft, ChevronRight, Calendar, Users, Trophy, Code, MapPin, Clock, ArrowRight } from 'lucide-react';
 
+// Force dynamic rendering
+export const dynamic = 'force-dynamic';
+
 interface Hackathon {
   id: number;
   name: string;
