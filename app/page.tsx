@@ -148,6 +148,7 @@ function HomePageContent() {
       
       <div className="ml-64 flex-1">
         <TopNav 
+          onOpenLogin={() => setShowLoginModal(true)}
           showLoginModal={showLoginModal}
           onCloseLoginModal={() => setShowLoginModal(false)}
           initialLoginMode={loginMode}
