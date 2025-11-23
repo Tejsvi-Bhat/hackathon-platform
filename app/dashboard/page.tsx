@@ -46,6 +46,22 @@ interface Hackathon {
   mode: string;
 }
 
+interface Prize {
+  position: number;
+  title: string;
+  amount: number;
+  description: string;
+  evaluation_criteria: string;
+  judge_ids: number[];
+}
+
+interface Judge {
+  id: number;
+  full_name: string;
+  email: string;
+  expertise?: string;
+}
+
 export default function DashboardPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
@@ -55,6 +71,18 @@ export default function DashboardPage() {
   const [hackathons, setHackathons] = useState<Hackathon[]>([]);
   const [showCreateProject, setShowCreateProject] = useState(false);
   const [showCreateHackathon, setShowCreateHackathon] = useState(false);
+  const [hackathonStep, setHackathonStep] = useState(1);
+  const [createdHackathonId, setCreatedHackathonId] = useState<number | null>(null);
+  const [prizes, setPrizes] = useState<Prize[]>([]);
+  const [availableJudges, setAvailableJudges] = useState<Judge[]>([]);
+  const [currentPrize, setCurrentPrize] = useState<Prize>({
+    position: 1,
+    title: '',
+    amount: 0,
+    description: '',
+    evaluation_criteria: '',
+    judge_ids: []
+  });
   const [newProject, setNewProject] = useState({
     title: '',
     description: '',
@@ -134,7 +162,24 @@ export default function DashboardPage() {
         }
       }
     } catch (error) {
-      console.error('Failed to fetch dashboard data:', error);
+      console.error('Error fetching dashboard data:', error);
+    }
+  };
+
+  const fetchJudges = async () => {
+    const token = localStorage.getItem('token');
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+    
+    try {
+      const res = await fetch(`${apiUrl}/api/judges`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setAvailableJudges(data);
+      }
+    } catch (error) {
+      console.error('Error fetching judges:', error);
     }
   };
 
@@ -186,27 +231,145 @@ export default function DashboardPage() {
       });
 
       if (response.ok) {
-        setShowCreateHackathon(false);
-        setNewHackathon({
-          name: '',
-          description: '',
-          start_date: '',
-          end_date: '',
-          registration_deadline: '',
-          ecosystem: 'Ethereum',
-          tech_stack: '',
-          level: 'intermediate',
-          mode: 'hybrid',
-          min_team_size: 1,
-          max_team_size: 5,
-          banner_image: '',
-          is_featured: false
-        });
-        fetchDashboardData();
+        const data = await response.json();
+        setCreatedHackathonId(data.id);
+        setHackathonStep(2);
+        fetchJudges();
       }
     } catch (error) {
       console.error('Failed to create hackathon:', error);
     }
+  };
+
+  const handleAddPrize = () => {
+    if (!currentPrize.title || currentPrize.amount <= 0) {
+      alert('Please fill in prize title and amount');
+      return;
+    }
+    setPrizes([...prizes, { ...currentPrize }]);
+    setCurrentPrize({
+      position: prizes.length + 2,
+      title: '',
+      amount: 0,
+      description: '',
+      evaluation_criteria: '',
+      judge_ids: []
+    });
+  };
+
+  const handleRemovePrize = (index: number) => {
+    const updatedPrizes = prizes.filter((_, i) => i !== index);
+    // Reorder positions
+    setPrizes(updatedPrizes.map((p, i) => ({ ...p, position: i + 1 })));
+  };
+
+  const handleFinishHackathon = async () => {
+    if (prizes.length === 0) {
+      const confirm = window.confirm('No prizes added. Do you want to continue without prizes?');
+      if (!confirm) return;
+    }
+
+    const token = localStorage.getItem('token');
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+
+    try {
+      // Create prizes
+      const uniqueJudges = new Set<number>();
+      
+      for (const prize of prizes) {
+        await fetch(`${apiUrl}/api/hackathons/${createdHackathonId}/prizes`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify(prize)
+        });
+
+        // Collect unique judge IDs
+        prize.judge_ids.forEach(id => uniqueJudges.add(id));
+      }
+
+      // Assign judges to hackathon (unique)
+      for (const judgeId of uniqueJudges) {
+        await fetch(`${apiUrl}/api/hackathons/${createdHackathonId}/judges`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ judge_id: judgeId })
+        });
+      }
+
+      alert('Hackathon created successfully with prizes and judges!');
+      setShowCreateHackathon(false);
+      setHackathonStep(1);
+      setCreatedHackathonId(null);
+      setPrizes([]);
+      setCurrentPrize({
+        position: 1,
+        title: '',
+        amount: 0,
+        description: '',
+        evaluation_criteria: '',
+        judge_ids: []
+      });
+      setNewHackathon({
+        name: '',
+        description: '',
+        start_date: '',
+        end_date: '',
+        registration_deadline: '',
+        ecosystem: 'Ethereum',
+        tech_stack: '',
+        level: 'intermediate',
+        mode: 'hybrid',
+        min_team_size: 1,
+        max_team_size: 5,
+        banner_image: '',
+        is_featured: false
+      });
+      fetchDashboardData();
+    } catch (error) {
+      console.error('Error creating prizes:', error);
+      alert('Failed to create prizes');
+    }
+  };
+
+  const handleCancelHackathon = () => {
+    if (hackathonStep === 2) {
+      const confirm = window.confirm('Are you sure? The hackathon basic details have been saved, but prizes will not be added.');
+      if (!confirm) return;
+    }
+    setShowCreateHackathon(false);
+    setHackathonStep(1);
+    setCreatedHackathonId(null);
+    setPrizes([]);
+    setCurrentPrize({
+      position: 1,
+      title: '',
+      amount: 0,
+      description: '',
+      evaluation_criteria: '',
+      judge_ids: []
+    });
+    setNewHackathon({
+      name: '',
+      description: '',
+      start_date: '',
+      end_date: '',
+      registration_deadline: '',
+      ecosystem: 'Ethereum',
+      tech_stack: '',
+      level: 'intermediate',
+      mode: 'hybrid',
+      min_team_size: 1,
+      max_team_size: 5,
+      banner_image: '',
+      is_featured: false
+    });
+    fetchDashboardData();
   };
 
   if (loading) {
@@ -709,19 +872,30 @@ export default function DashboardPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
           <div className="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
             <div className="sticky top-0 bg-gray-900 border-b border-gray-800 p-6 flex items-center justify-between">
-              <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-                <Rocket className="w-6 h-6 text-purple-400" />
-                Create New Hackathon
-              </h2>
+              <div>
+                <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+                  <Rocket className="w-6 h-6 text-purple-400" />
+                  {hackathonStep === 1 ? 'Create New Hackathon' : 'Add Prizes & Judges'}
+                </h2>
+                <div className="flex items-center gap-2 mt-2">
+                  <div className={`px-3 py-1 rounded-full text-xs font-medium ${hackathonStep === 1 ? 'bg-purple-600 text-white' : 'bg-gray-700 text-gray-300'}`}>
+                    Step 1: Details
+                  </div>
+                  <div className={`px-3 py-1 rounded-full text-xs font-medium ${hackathonStep === 2 ? 'bg-purple-600 text-white' : 'bg-gray-700 text-gray-300'}`}>
+                    Step 2: Prizes
+                  </div>
+                </div>
+              </div>
               <button
-                onClick={() => setShowCreateHackathon(false)}
+                onClick={handleCancelHackathon}
                 className="p-2 hover:bg-gray-800 rounded-lg transition text-gray-400 hover:text-white"
               >
                 <X className="w-6 h-6" />
               </button>
             </div>
 
-            <form onSubmit={handleCreateHackathon} className="p-6 space-y-6">
+            {hackathonStep === 1 ? (
+              <form onSubmit={handleCreateHackathon} className="p-6 space-y-6">
               <div className="grid md:grid-cols-2 gap-6">
                 {/* Hackathon Name */}
                 <div className="md:col-span-2">
@@ -923,7 +1097,7 @@ export default function DashboardPage() {
               <div className="flex gap-3 pt-4 border-t border-gray-800">
                 <button
                   type="button"
-                  onClick={() => setShowCreateHackathon(false)}
+                  onClick={handleCancelHackathon}
                   className="flex-1 px-6 py-3 bg-gray-800 text-white rounded-lg hover:bg-gray-700 transition font-medium"
                 >
                   Cancel
@@ -932,10 +1106,202 @@ export default function DashboardPage() {
                   type="submit"
                   className="flex-1 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:from-purple-700 hover:to-pink-700 transition font-medium"
                 >
-                  Create Hackathon
+                  Next: Add Prizes →
                 </button>
               </div>
             </form>
+            ) : (
+              <div className="p-6 space-y-6">
+                {/* Prize Form */}
+                <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-6 space-y-4">
+                  <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                    <Award className="w-5 h-5 text-yellow-400" />
+                    Add Prize
+                  </h3>
+                  
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">
+                        Position *
+                      </label>
+                      <input
+                        type="number"
+                        min="1"
+                        value={currentPrize.position}
+                        onChange={(e) => setCurrentPrize({ ...currentPrize, position: parseInt(e.target.value) })}
+                        className="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:border-purple-500 focus:outline-none"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">
+                        Prize Title *
+                      </label>
+                      <input
+                        type="text"
+                        value={currentPrize.title}
+                        onChange={(e) => setCurrentPrize({ ...currentPrize, title: e.target.value })}
+                        className="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:border-purple-500 focus:outline-none"
+                        placeholder="e.g., First Place"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">
+                        Amount (USD) *
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={currentPrize.amount}
+                        onChange={(e) => setCurrentPrize({ ...currentPrize, amount: parseFloat(e.target.value) })}
+                        className="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:border-purple-500 focus:outline-none"
+                        placeholder="10000"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">
+                        Description
+                      </label>
+                      <input
+                        type="text"
+                        value={currentPrize.description}
+                        onChange={(e) => setCurrentPrize({ ...currentPrize, description: e.target.value })}
+                        className="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:border-purple-500 focus:outline-none"
+                        placeholder="Best overall project"
+                      />
+                    </div>
+
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-gray-300 mb-2">
+                        Evaluation Criteria
+                      </label>
+                      <textarea
+                        rows={2}
+                        value={currentPrize.evaluation_criteria}
+                        onChange={(e) => setCurrentPrize({ ...currentPrize, evaluation_criteria: e.target.value })}
+                        className="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:border-purple-500 focus:outline-none"
+                        placeholder="Innovation, technical implementation, impact..."
+                      />
+                    </div>
+
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-gray-300 mb-2">
+                        <Users className="w-4 h-4 inline mr-1" />
+                        Assign Judges
+                      </label>
+                      <div className="bg-gray-900 border border-gray-700 rounded-lg p-3 max-h-40 overflow-y-auto">
+                        {availableJudges.length === 0 ? (
+                          <p className="text-gray-500 text-sm">No judges available</p>
+                        ) : (
+                          <div className="space-y-2">
+                            {availableJudges.map((judge) => (
+                              <label key={judge.id} className="flex items-center gap-2 cursor-pointer hover:bg-gray-800 p-2 rounded">
+                                <input
+                                  type="checkbox"
+                                  checked={currentPrize.judge_ids.includes(judge.id)}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      setCurrentPrize({ ...currentPrize, judge_ids: [...currentPrize.judge_ids, judge.id] });
+                                    } else {
+                                      setCurrentPrize({ ...currentPrize, judge_ids: currentPrize.judge_ids.filter(id => id !== judge.id) });
+                                    }
+                                  }}
+                                  className="w-4 h-4 rounded bg-gray-800 border-gray-600 text-purple-600"
+                                />
+                                <span className="text-sm text-gray-300">{judge.full_name} ({judge.email})</span>
+                              </label>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleAddPrize}
+                    className="w-full px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition font-medium flex items-center justify-center gap-2"
+                  >
+                    <Plus className="w-5 h-5" />
+                    Add Prize
+                  </button>
+                </div>
+
+                {/* Added Prizes List */}
+                {prizes.length > 0 && (
+                  <div className="space-y-3">
+                    <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                      <Trophy className="w-5 h-5 text-yellow-400" />
+                      Added Prizes ({prizes.length})
+                    </h3>
+                    {prizes.map((prize, index) => (
+                      <div key={index} className="bg-gray-800 border border-gray-700 rounded-lg p-4">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-3 mb-2">
+                              <span className="px-2 py-1 bg-purple-600 text-white text-xs font-bold rounded">
+                                #{prize.position}
+                              </span>
+                              <h4 className="text-white font-semibold">{prize.title}</h4>
+                              <span className="text-green-400 font-bold">${prize.amount.toLocaleString()}</span>
+                            </div>
+                            {prize.description && (
+                              <p className="text-gray-400 text-sm mb-2">{prize.description}</p>
+                            )}
+                            {prize.evaluation_criteria && (
+                              <p className="text-gray-500 text-xs mb-2">
+                                <Target className="w-3 h-3 inline mr-1" />
+                                {prize.evaluation_criteria}
+                              </p>
+                            )}
+                            {prize.judge_ids.length > 0 && (
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <Users className="w-3 h-3 text-gray-500" />
+                                {prize.judge_ids.map(judgeId => {
+                                  const judge = availableJudges.find(j => j.id === judgeId);
+                                  return judge ? (
+                                    <span key={judgeId} className="px-2 py-0.5 bg-blue-600/20 text-blue-300 text-xs rounded">
+                                      {judge.full_name}
+                                    </span>
+                                  ) : null;
+                                })}
+                              </div>
+                            )}
+                          </div>
+                          <button
+                            onClick={() => handleRemovePrize(index)}
+                            className="p-1 hover:bg-red-600/20 rounded text-red-400 hover:text-red-300 transition"
+                          >
+                            <X className="w-5 h-5" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Action Buttons */}
+                <div className="flex gap-3 pt-4 border-t border-gray-800">
+                  <button
+                    type="button"
+                    onClick={handleCancelHackathon}
+                    className="flex-1 px-6 py-3 bg-gray-800 text-white rounded-lg hover:bg-gray-700 transition font-medium"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleFinishHackathon}
+                    className="flex-1 px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg hover:from-green-700 hover:to-emerald-700 transition font-medium"
+                  >
+                    Finish & Create Hackathon
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

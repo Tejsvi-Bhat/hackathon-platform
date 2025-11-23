@@ -319,7 +319,7 @@ app.post('/api/hackathons', authenticate, authorize('organizer'), async (req: Au
 app.post('/api/hackathons/:id/prizes', authenticate, authorize('organizer'), async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
-    const { title, description, amount, position, blockchainPrizeId } = req.body;
+    const { title, description, amount, position, blockchainPrizeId, evaluation_criteria } = req.body;
 
     // Verify ownership
     const hackathon = await pool.query(
@@ -331,10 +331,13 @@ app.post('/api/hackathons/:id/prizes', authenticate, authorize('organizer'), asy
       return res.status(403).json({ error: 'Not authorized' });
     }
 
+    // Auto-generate blockchain_prize_id if not provided
+    const nextBlockchainId = blockchainPrizeId || Math.floor(Math.random() * 1000000) + 1;
+
     const result = await pool.query(
       `INSERT INTO prizes (hackathon_id, blockchain_prize_id, title, description, amount, position)
        VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-      [id, blockchainPrizeId, title, description, amount, position]
+      [id, nextBlockchainId, title, description || '', amount, position]
     );
 
     res.status(201).json(result.rows[0]);
@@ -376,7 +379,8 @@ app.post('/api/hackathons/:id/schedules', authenticate, authorize('organizer'), 
 app.post('/api/hackathons/:id/judges', authenticate, authorize('organizer'), async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
-    const { judgeId } = req.body;
+    const { judge_id, judgeId } = req.body;
+    const targetJudgeId = judge_id || judgeId; // Support both field names
 
     const hackathon = await pool.query(
       'SELECT * FROM hackathons WHERE id = $1 AND organizer_id = $2',
@@ -389,7 +393,7 @@ app.post('/api/hackathons/:id/judges', authenticate, authorize('organizer'), asy
 
     const judge = await pool.query(
       'SELECT * FROM users WHERE id = $1 AND role = $2',
-      [judgeId, 'judge']
+      [targetJudgeId, 'judge']
     );
 
     if (judge.rows.length === 0) {
@@ -401,7 +405,7 @@ app.post('/api/hackathons/:id/judges', authenticate, authorize('organizer'), asy
        VALUES ($1, $2, $3)
        ON CONFLICT (hackathon_id, judge_id) DO NOTHING
        RETURNING *`,
-      [id, judgeId, judge.rows[0].wallet_address]
+      [id, targetJudgeId, judge.rows[0].wallet_address]
     );
 
     res.status(201).json(result.rows[0]);
