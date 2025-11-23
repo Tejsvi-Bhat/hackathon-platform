@@ -27,12 +27,13 @@ export default function LoginModal({ isOpen, onClose, onLoginSuccess, initialMod
     setLoading(true);
 
     try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
       const endpoint = isLogin ? '/api/auth/login' : '/api/auth/register';
       const body = isLogin 
         ? { email, password }
         : { email, password, fullName, role: 'participant' };
 
-      const response = await fetch(`http://localhost:3001${endpoint}`, {
+      const response = await fetch(`${apiUrl}${endpoint}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),

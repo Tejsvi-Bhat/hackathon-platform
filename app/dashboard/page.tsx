@@ -21,13 +21,14 @@ export default function DashboardPage() {
 
   const fetchData = async () => {
     const token = localStorage.getItem('token');
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
     
     try {
       const [statsRes, notifRes] = await Promise.all([
-        fetch('http://localhost:3001/api/dashboard/stats', {
+        fetch(`${apiUrl}/api/dashboard/stats`, {
           headers: { 'Authorization': `Bearer ${token}` }
         }),
-        fetch('http://localhost:3001/api/notifications', {
+        fetch(`${apiUrl}/api/notifications`, {
           headers: { 'Authorization': `Bearer ${token}` }
         })
       ]);

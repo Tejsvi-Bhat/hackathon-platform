@@ -30,7 +30,8 @@ export default function TopNav({ onOpenLogin, showLoginModal: externalShowModal,
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (token) {
-      fetch('http://localhost:3001/api/auth/me', {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+      fetch(`${apiUrl}/api/auth/me`, {
         headers: { 'Authorization': `Bearer ${token}` }
       })
         .then(res => res.json())
@@ -54,7 +55,8 @@ export default function TopNav({ onOpenLogin, showLoginModal: externalShowModal,
     // Refresh user data after login
     const token = localStorage.getItem('token');
     if (token) {
-      fetch('http://localhost:3001/api/auth/me', {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+      fetch(`${apiUrl}/api/auth/me`, {
         headers: { 'Authorization': `Bearer ${token}` }
       })
         .then(res => res.json())

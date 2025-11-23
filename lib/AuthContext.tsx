@@ -48,7 +48,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         return;
       }
 
-      const response = await fetch('http://localhost:3001/api/auth/me', {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+      const response = await fetch(`${apiUrl}/api/auth/me`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -75,7 +76,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const login = async (email: string, password: string) => {
-    const response = await fetch('http://localhost:3001/api/auth/login', {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+    const response = await fetch(`${apiUrl}/api/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password })
@@ -100,7 +102,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const register = async (data: RegisterData) => {
-    const response = await fetch('http://localhost:3001/api/auth/register', {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+    const response = await fetch(`${apiUrl}/api/auth/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
@@ -126,7 +129,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const logout = async () => {
     try {
-      await fetch('http://localhost:3001/api/auth/logout', {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+      await fetch(`${apiUrl}/api/auth/logout`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
