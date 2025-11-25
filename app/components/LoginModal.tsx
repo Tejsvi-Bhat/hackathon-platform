@@ -1,6 +1,6 @@
 'use client';
 
-import { X, Mail, Lock, Eye, EyeOff, Github, Chrome } from 'lucide-react';
+import { X, Mail, Lock, Eye, EyeOff, Github, Chrome, UserCircle, Trophy, Users } from 'lucide-react';
 import { useState } from 'react';
 
 interface LoginModalProps {
@@ -16,6 +16,7 @@ export default function LoginModal({ isOpen, onClose, onLoginSuccess, initialMod
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
+  const [role, setRole] = useState<'organizer' | 'participant' | 'judge'>('participant');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -31,7 +32,7 @@ export default function LoginModal({ isOpen, onClose, onLoginSuccess, initialMod
       const endpoint = isLogin ? '/api/auth/login' : '/api/auth/register';
       const body = isLogin 
         ? { email, password }
-        : { email, password, fullName, role: 'participant' };
+        : { email, password, fullName, role };
 
       const response = await fetch(`${apiUrl}${endpoint}`, {
         method: 'POST',
@@ -101,19 +102,73 @@ export default function LoginModal({ isOpen, onClose, onLoginSuccess, initialMod
           )}
 
           {!isLogin && (
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                Full Name
-              </label>
-              <input
-                type="text"
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                className="w-full bg-gray-800 text-white px-4 py-3 rounded-lg border border-gray-700 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition"
-                placeholder="John Doe"
-                required={!isLogin}
-              />
-            </div>
+            <>
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Full Name
+                </label>
+                <input
+                  type="text"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  className="w-full bg-gray-800 text-white px-4 py-3 rounded-lg border border-gray-700 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition"
+                  placeholder="John Doe"
+                  required={!isLogin}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Select Your Role
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setRole('organizer')}
+                    className={`p-3 rounded-lg border-2 transition ${
+                      role === 'organizer'
+                        ? 'border-blue-500 bg-blue-500/10'
+                        : 'border-gray-700 bg-gray-800 hover:border-gray-600'
+                    }`}
+                  >
+                    <UserCircle className={`w-6 h-6 mx-auto mb-1 ${role === 'organizer' ? 'text-blue-400' : 'text-gray-400'}`} />
+                    <div className={`text-xs font-medium ${role === 'organizer' ? 'text-blue-400' : 'text-gray-400'}`}>
+                      Organizer
+                    </div>
+                  </button>
+                  
+                  <button
+                    type="button"
+                    onClick={() => setRole('participant')}
+                    className={`p-3 rounded-lg border-2 transition ${
+                      role === 'participant'
+                        ? 'border-blue-500 bg-blue-500/10'
+                        : 'border-gray-700 bg-gray-800 hover:border-gray-600'
+                    }`}
+                  >
+                    <Users className={`w-6 h-6 mx-auto mb-1 ${role === 'participant' ? 'text-blue-400' : 'text-gray-400'}`} />
+                    <div className={`text-xs font-medium ${role === 'participant' ? 'text-blue-400' : 'text-gray-400'}`}>
+                      Participant
+                    </div>
+                  </button>
+                  
+                  <button
+                    type="button"
+                    onClick={() => setRole('judge')}
+                    className={`p-3 rounded-lg border-2 transition ${
+                      role === 'judge'
+                        ? 'border-blue-500 bg-blue-500/10'
+                        : 'border-gray-700 bg-gray-800 hover:border-gray-600'
+                    }`}
+                  >
+                    <Trophy className={`w-6 h-6 mx-auto mb-1 ${role === 'judge' ? 'text-blue-400' : 'text-gray-400'}`} />
+                    <div className={`text-xs font-medium ${role === 'judge' ? 'text-blue-400' : 'text-gray-400'}`}>
+                      Judge
+                    </div>
+                  </button>
+                </div>
+              </div>
+            </>
           )}
 
           <div>
