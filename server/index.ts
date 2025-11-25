@@ -543,9 +543,9 @@ app.get('/api/projects/:id', authenticate, async (req: AuthRequest, res: Respons
     const projectResult = await pool.query(
       `SELECT p.*, 
         json_agg(json_build_object(
-          'userId', u.id,
-          'fullName', u.full_name,
-          'walletAddress', u.wallet_address,
+          'id', u.id,
+          'name', u.full_name,
+          'wallet_address', u.wallet_address,
           'role', pm.role
         )) as team_members
        FROM projects p
