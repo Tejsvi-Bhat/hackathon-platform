@@ -264,7 +264,7 @@ export default function ProjectDetail() {
     return (
       <div className="flex min-h-screen bg-gray-950">
         <Sidebar />
-        <div className="flex-1">
+        <div className="ml-64 flex-1">
           <TopNav />
           <main className="p-8">
             <div className="flex items-center justify-center h-64">
@@ -280,7 +280,7 @@ export default function ProjectDetail() {
     return (
       <div className="flex min-h-screen bg-gray-950">
         <Sidebar />
-        <div className="flex-1">
+        <div className="ml-64 flex-1">
           <TopNav />
           <main className="p-8">
             <div className="text-center">
@@ -302,7 +302,7 @@ export default function ProjectDetail() {
   return (
     <div className="flex min-h-screen bg-gray-950">
       <Sidebar />
-      <div className="flex-1">
+      <div className="ml-64 flex-1">
         <TopNav />
         <main className="p-8">
           {/* Breadcrumb */}
