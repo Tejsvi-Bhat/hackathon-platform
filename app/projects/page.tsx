@@ -16,7 +16,7 @@ interface Project {
   tags: string[];
   submitted_at: string;
   hackathon_name: string;
-  team_members: string[];
+  team_members: Array<{ id: number; name: string }>;
   is_public: boolean;
 }
 
@@ -38,12 +38,16 @@ export default function ProjectsPage() {
   const fetchProjects = async () => {
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+      console.log('Fetching projects from:', `${apiUrl}/api/projects`);
       const res = await fetch(`${apiUrl}/api/projects`);
       
       if (res.ok) {
         const data = await res.json();
+        console.log('Projects fetched:', data.length, 'projects');
         setProjects(data);
         setFilteredProjects(data);
+      } else {
+        console.error('Failed to fetch projects:', res.status, res.statusText);
       }
     } catch (error) {
       console.error('Error fetching projects:', error);
@@ -81,7 +85,7 @@ export default function ProjectsPage() {
     return (
       <div className="flex min-h-screen bg-gray-950">
         <Sidebar />
-        <div className="flex-1 flex flex-col">
+        <div className="ml-64 flex-1 flex flex-col">
           <TopNav />
           <main className="flex-1 p-8 overflow-y-auto">
             <div className="flex items-center justify-center h-64">
@@ -96,7 +100,7 @@ export default function ProjectsPage() {
   return (
     <div className="flex min-h-screen bg-gray-950">
       <Sidebar />
-      <div className="flex-1 flex flex-col">
+      <div className="ml-64 flex-1 flex flex-col">
         <TopNav />
         <main className="flex-1 p-8 overflow-y-auto">
           {/* Header */}
