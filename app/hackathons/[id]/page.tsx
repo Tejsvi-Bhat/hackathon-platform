@@ -428,7 +428,11 @@ export default function HackathonDetailPage() {
                   {hackathon.projects && hackathon.projects.length > 0 ? (
                     <div className="grid md:grid-cols-2 gap-6">
                       {hackathon.projects.map((project) => (
-                        <div key={project.id} className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden hover:border-gray-700 transition group">
+                        <div 
+                          key={project.id} 
+                          className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden hover:border-gray-700 transition group cursor-pointer"
+                          onClick={() => router.push(`/projects/${project.id}`)}
+                        >
                       <div className="relative h-48 bg-gradient-to-br from-blue-900/20 to-purple-900/20">
                         {project.image_url ? (
                           <img src={project.image_url} alt={project.name} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition" />
@@ -469,6 +473,7 @@ export default function HackathonDetailPage() {
                               href={project.github_url}
                               target="_blank"
                               rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()}
                               className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-lg text-sm transition"
                             >
                               <ExternalLink className="w-4 h-4" />
@@ -480,6 +485,7 @@ export default function HackathonDetailPage() {
                               href={project.demo_url}
                               target="_blank"
                               rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()}
                               className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm transition"
                             >
                               <ExternalLink className="w-4 h-4" />
@@ -556,7 +562,7 @@ export default function HackathonDetailPage() {
                                 <td className="px-6 py-4 text-center">
                                   <div className="inline-flex items-center gap-2 px-4 py-2 bg-blue-500/10 border border-blue-500/30 rounded-lg">
                                     <Award className="w-5 h-5 text-blue-400" />
-                                    <span className="text-2xl font-bold text-blue-400">{entry.average_score.toFixed(1)}</span>
+                                    <span className="text-2xl font-bold text-blue-400">{Number(entry.average_score).toFixed(1)}</span>
                                     <span className="text-sm text-gray-400">/ 400</span>
                                   </div>
                                 </td>
