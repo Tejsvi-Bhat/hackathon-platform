@@ -882,9 +882,14 @@ app.get('/api/dashboard/stats', authenticate, async (req: AuthRequest, res: Resp
         [userId]
       );
 
+      const scored = await pool.query(
+        'SELECT COUNT(DISTINCT project_id) as count FROM scores WHERE judge_id = $1',
+        [userId]
+      );
+
       res.json({
         hackathonsJudging: parseInt(judging.rows[0]?.count || '0'),
-        projectsScored: 0 // TODO: Calculate from scores
+        projectsScored: parseInt(scored.rows[0]?.count || '0')
       });
     } else if (role === 'organizer') {
       const hackathons = await pool.query(
@@ -1018,6 +1023,120 @@ app.get('/api/users/me/hackathons', authenticate, authorize('organizer'), async 
   } catch (error) {
     console.error('Error fetching organizer hackathons:', error);
     res.status(500).json({ error: 'Failed to fetch hackathons' });
+  }
+});
+
+// Get judge's assigned hackathons
+app.get('/api/users/me/judge-hackathons', authenticate, authorize('judge'), async (req: AuthRequest, res: Response) => {
+  try {
+    const result = await pool.query(
+      `SELECT h.*, hj.assigned_at,
+        (SELECT COUNT(*) FROM projects WHERE hackathon_id = h.id) as project_count,
+        (SELECT COUNT(*) FROM scores s WHERE s.judge_id = $1 AND s.project_id IN 
+          (SELECT id FROM projects WHERE hackathon_id = h.id)) as scored_count
+       FROM hackathons h
+       JOIN hackathon_judges hj ON h.id = hj.hackathon_id
+       WHERE hj.judge_id = $1
+       ORDER BY h.start_date DESC`,
+      [req.user!.userId]
+    );
+
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error fetching judge hackathons:', error);
+    res.status(500).json({ error: 'Failed to fetch hackathons' });
+  }
+});
+
+// Get projects to judge for a hackathon
+app.get('/api/hackathons/:id/projects-to-judge', authenticate, authorize('judge'), async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    
+    // Verify judge is assigned to this hackathon
+    const assigned = await pool.query(
+      'SELECT * FROM hackathon_judges WHERE hackathon_id = $1 AND judge_id = $2',
+      [id, req.user!.userId]
+    );
+
+    if (assigned.rows.length === 0) {
+      return res.status(403).json({ error: 'Not assigned to this hackathon' });
+    }
+
+    const result = await pool.query(
+      `SELECT p.*, 
+        ARRAY_AGG(DISTINCT u.full_name) as team_members,
+        COALESCE(s.technical_score, 0) as technical_score,
+        COALESCE(s.innovation_score, 0) as innovation_score,
+        COALESCE(s.presentation_score, 0) as presentation_score,
+        COALESCE(s.impact_score, 0) as impact_score,
+        COALESCE(s.total_score, 0) as my_score,
+        s.feedback as my_feedback,
+        s.scored_at as my_scored_at
+       FROM projects p
+       LEFT JOIN project_members pm ON p.id = pm.project_id
+       LEFT JOIN users u ON pm.user_id = u.id
+       LEFT JOIN scores s ON p.id = s.project_id AND s.judge_id = $2
+       WHERE p.hackathon_id = $1
+       GROUP BY p.id, s.technical_score, s.innovation_score, s.presentation_score, 
+                s.impact_score, s.total_score, s.feedback, s.scored_at
+       ORDER BY p.submitted_at DESC`,
+      [id, req.user!.userId]
+    );
+
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error fetching projects to judge:', error);
+    res.status(500).json({ error: 'Failed to fetch projects' });
+  }
+});
+
+// Submit or update score for a project
+app.post('/api/projects/:id/score', authenticate, authorize('judge'), async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { technical_score, innovation_score, presentation_score, impact_score, feedback } = req.body;
+
+    // Verify project exists and judge is assigned to its hackathon
+    const project = await pool.query('SELECT hackathon_id FROM projects WHERE id = $1', [id]);
+    if (project.rows.length === 0) {
+      return res.status(404).json({ error: 'Project not found' });
+    }
+
+    const assigned = await pool.query(
+      'SELECT * FROM hackathon_judges WHERE hackathon_id = $1 AND judge_id = $2',
+      [project.rows[0].hackathon_id, req.user!.userId]
+    );
+
+    if (assigned.rows.length === 0) {
+      return res.status(403).json({ error: 'Not authorized to score this project' });
+    }
+
+    // Get judge's wallet address
+    const judge = await pool.query('SELECT wallet_address FROM users WHERE id = $1', [req.user!.userId]);
+
+    // Insert or update score
+    const result = await pool.query(
+      `INSERT INTO scores (project_id, judge_id, judge_address, technical_score, innovation_score, 
+                          presentation_score, impact_score, feedback)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+       ON CONFLICT (project_id, judge_id)
+       DO UPDATE SET 
+         technical_score = EXCLUDED.technical_score,
+         innovation_score = EXCLUDED.innovation_score,
+         presentation_score = EXCLUDED.presentation_score,
+         impact_score = EXCLUDED.impact_score,
+         feedback = EXCLUDED.feedback,
+         scored_at = CURRENT_TIMESTAMP
+       RETURNING *`,
+      [id, req.user!.userId, judge.rows[0].wallet_address, technical_score, innovation_score, 
+       presentation_score, impact_score, feedback]
+    );
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Error submitting score:', error);
+    res.status(500).json({ error: 'Failed to submit score' });
   }
 });
 

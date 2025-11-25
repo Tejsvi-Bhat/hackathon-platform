@@ -44,6 +44,8 @@ interface Hackathon {
   ecosystem: string;
   level: string;
   mode: string;
+  scored_count?: number;
+  assigned_at?: string;
 }
 
 interface Prize {
@@ -69,6 +71,7 @@ export default function DashboardPage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [registrations, setRegistrations] = useState<Registration[]>([]);
   const [hackathons, setHackathons] = useState<Hackathon[]>([]);
+  const [judgeHackathons, setJudgeHackathons] = useState<Hackathon[]>([]);
   const [showCreateProject, setShowCreateProject] = useState(false);
   const [showCreateHackathon, setShowCreateHackathon] = useState(false);
   const [hackathonStep, setHackathonStep] = useState(1);
@@ -159,6 +162,17 @@ export default function DashboardPage() {
         if (hackathonsRes.ok) {
           const hackathonsData = await hackathonsRes.json();
           setHackathons(hackathonsData);
+        }
+      }
+
+      // Fetch judge's assigned hackathons
+      if (user?.role === 'judge') {
+        const judgeHackathonsRes = await fetch(`${apiUrl}/api/users/me/judge-hackathons`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (judgeHackathonsRes.ok) {
+          const judgeHackathonsData = await judgeHackathonsRes.json();
+          setJudgeHackathons(judgeHackathonsData);
         }
       }
     } catch (error) {
@@ -605,13 +619,102 @@ export default function DashboardPage() {
             </>
           )}
 
-          {/* Judge Dashboard - Placeholder */}
+          {/* Judge Dashboard */}
           {user.role === 'judge' && (
-            <div className="text-center py-12">
-              <Award className="w-16 h-16 text-blue-400 mx-auto mb-4" />
-              <h2 className="text-2xl font-bold text-white mb-2">Judge Dashboard</h2>
-              <p className="text-gray-400">Coming soon...</p>
-            </div>
+            <>
+              {/* Stats */}
+              <div className="grid md:grid-cols-2 gap-6 mb-8">
+                <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
+                  <div className="flex items-center gap-4">
+                    <div className="p-3 bg-blue-500/10 rounded-lg">
+                      <Award className="w-6 h-6 text-blue-400" />
+                    </div>
+                    <div>
+                      <p className="text-gray-400 text-sm">Hackathons Assigned</p>
+                      <p className="text-3xl font-bold text-white mt-1">{stats.hackathonsJudging || 0}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
+                  <div className="flex items-center gap-4">
+                    <div className="p-3 bg-green-500/10 rounded-lg">
+                      <TrendingUp className="w-6 h-6 text-green-400" />
+                    </div>
+                    <div>
+                      <p className="text-gray-400 text-sm">Projects Scored</p>
+                      <p className="text-3xl font-bold text-white mt-1">{stats.projectsScored || 0}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Assigned Hackathons */}
+              <div className="mb-8">
+                <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-2">
+                  <Award className="w-6 h-6 text-blue-400" />
+                  Assigned Hackathons
+                </h2>
+
+                {judgeHackathons.length === 0 ? (
+                  <div className="bg-gray-900 border border-gray-800 rounded-xl p-12 text-center">
+                    <Award className="w-16 h-16 text-gray-700 mx-auto mb-4" />
+                    <h3 className="text-xl font-semibold text-gray-400 mb-2">No Hackathons Assigned</h3>
+                    <p className="text-gray-500">You haven't been assigned to any hackathons yet.</p>
+                  </div>
+                ) : (
+                  <div className="grid gap-4">
+                    {judgeHackathons.map((hackathon) => (
+                      <Link
+                        key={hackathon.id}
+                        href={`/hackathons/${hackathon.id}`}
+                        className="bg-gray-900 border border-gray-800 rounded-xl p-6 hover:border-blue-500/50 transition group"
+                      >
+                        <div className="flex items-start justify-between mb-4">
+                          <div className="flex-1">
+                            <h3 className="text-xl font-semibold text-white group-hover:text-blue-400 transition mb-2">
+                              {hackathon.name}
+                            </h3>
+                            <p className="text-gray-400 text-sm line-clamp-2 mb-3">{hackathon.description}</p>
+                            <div className="flex items-center gap-4 text-sm">
+                              <span className="flex items-center gap-1 text-gray-400">
+                                <Calendar className="w-4 h-4" />
+                                {new Date(hackathon.start_date).toLocaleDateString()} - {new Date(hackathon.end_date).toLocaleDateString()}
+                              </span>
+                              <span className={`px-2 py-1 rounded text-xs font-medium ${
+                                hackathon.status === 'ongoing' ? 'bg-green-500/20 text-green-300' :
+                                hackathon.status === 'upcoming' ? 'bg-blue-500/20 text-blue-300' :
+                                'bg-gray-500/20 text-gray-300'
+                              }`}>
+                                {hackathon.status}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-6 pt-4 border-t border-gray-800">
+                          <div className="flex items-center gap-2">
+                            <Code className="w-4 h-4 text-gray-400" />
+                            <span className="text-sm text-gray-300">{hackathon.project_count || 0} Projects</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Trophy className="w-4 h-4 text-yellow-400" />
+                            <span className="text-sm text-gray-300">{hackathon.scored_count || 0} Scored</span>
+                          </div>
+                          {hackathon.status === 'ongoing' || hackathon.status === 'completed' ? (
+                            <div className="ml-auto">
+                              <span className="text-blue-400 text-sm font-medium group-hover:underline">
+                                View Projects to Judge →
+                              </span>
+                            </div>
+                          ) : null}
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </>
           )}
 
           {/* Organizer Dashboard */}
