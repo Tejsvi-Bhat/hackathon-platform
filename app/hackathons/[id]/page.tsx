@@ -60,6 +60,16 @@ interface FAQ {
   display_order: number;
 }
 
+interface LeaderboardEntry {
+  project_id: number;
+  project_name: string;
+  average_score: number;
+  num_judges: number;
+  team_members: string[];
+  github_url: string;
+  demo_url: string;
+}
+
 interface Hackathon {
   id: number;
   name: string;
@@ -88,11 +98,12 @@ export default function HackathonDetailPage() {
   const [hackathon, setHackathon] = useState<Hackathon | null>(null);
   const [loading, setLoading] = useState(true);
   const [isRegistered, setIsRegistered] = useState(false);
-  const [activeTab, setActiveTab] = useState<'overview' | 'prizes' | 'schedule' | 'projects'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'prizes' | 'schedule' | 'projects' | 'leaderboard'>('overview');
   const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
   const [showRegisterConfirm, setShowRegisterConfirm] = useState(false);
   const [showShareSuccess, setShowShareSuccess] = useState(false);
   const [registering, setRegistering] = useState(false);
+  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
 
   useEffect(() => {
     fetchHackathonDetails();
@@ -140,6 +151,15 @@ export default function HackathonDetailPage() {
         if (regResponse.ok) {
           const regData = await regResponse.json();
           setIsRegistered(regData.isRegistered);
+        }
+      }
+
+      // Fetch leaderboard if hackathon is completed
+      if (data.status === 'completed') {
+        const leaderboardResponse = await fetch(`${apiUrl}/api/hackathons/${params.id}/leaderboard`);
+        if (leaderboardResponse.ok) {
+          const leaderboardData = await leaderboardResponse.json();
+          setLeaderboard(leaderboardData);
         }
       }
     } catch (err) {
@@ -243,6 +263,7 @@ export default function HackathonDetailPage() {
               { id: 'prizes', label: 'Prizes & Judges' },
               { id: 'schedule', label: 'Schedule' },
               { id: 'projects', label: 'Submitted Projects' },
+              ...(hackathon.status === 'completed' ? [{ id: 'leaderboard', label: 'Leaderboard' }] : []),
             ].map((tab) => (
               <button
                 key={tab.id}
@@ -475,6 +496,110 @@ export default function HackathonDetailPage() {
                       <Code className="w-16 h-16 text-gray-700 mx-auto mb-4" />
                       <h3 className="text-xl font-semibold text-white mb-2">No Projects Yet</h3>
                       <p className="text-gray-400">No projects have been submitted to this hackathon yet.</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {activeTab === 'leaderboard' && (
+                <div className="space-y-6">
+                  {/* Leaderboard Header */}
+                  <div className="bg-gradient-to-r from-yellow-900/30 to-orange-900/30 border border-yellow-800/50 rounded-xl p-8 text-center">
+                    <Trophy className="w-12 h-12 text-yellow-500 mx-auto mb-4" />
+                    <h2 className="text-2xl font-bold text-white mb-2">Final Rankings</h2>
+                    <p className="text-gray-400">Based on judges' scores across all evaluation categories</p>
+                  </div>
+
+                  {/* Leaderboard Table */}
+                  {leaderboard && leaderboard.length > 0 ? (
+                    <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
+                      <div className="overflow-x-auto">
+                        <table className="w-full">
+                          <thead className="bg-gray-800/50">
+                            <tr>
+                              <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Rank</th>
+                              <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Project</th>
+                              <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Team</th>
+                              <th className="px-6 py-4 text-center text-xs font-medium text-gray-400 uppercase tracking-wider">Average Score</th>
+                              <th className="px-6 py-4 text-center text-xs font-medium text-gray-400 uppercase tracking-wider">Judges</th>
+                              <th className="px-6 py-4 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">Links</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-800">
+                            {leaderboard.map((entry, index) => (
+                              <tr key={entry.project_id} className="hover:bg-gray-800/50 transition">
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                  <div className="flex items-center">
+                                    {index === 0 && <Trophy className="w-6 h-6 text-yellow-500 mr-2" />}
+                                    {index === 1 && <Trophy className="w-6 h-6 text-gray-400 mr-2" />}
+                                    {index === 2 && <Trophy className="w-6 h-6 text-orange-600 mr-2" />}
+                                    <span className="text-2xl font-bold text-white">#{index + 1}</span>
+                                  </div>
+                                </td>
+                                <td className="px-6 py-4">
+                                  <div className="font-semibold text-white text-lg">{entry.project_name}</div>
+                                </td>
+                                <td className="px-6 py-4">
+                                  <div className="flex flex-wrap gap-1">
+                                    {entry.team_members?.slice(0, 3).map((member, idx) => (
+                                      <span key={idx} className="px-2 py-1 bg-gray-800 text-gray-300 rounded text-xs">
+                                        {member}
+                                      </span>
+                                    ))}
+                                    {entry.team_members?.length > 3 && (
+                                      <span className="px-2 py-1 bg-gray-700 text-gray-400 rounded text-xs">
+                                        +{entry.team_members.length - 3}
+                                      </span>
+                                    )}
+                                  </div>
+                                </td>
+                                <td className="px-6 py-4 text-center">
+                                  <div className="inline-flex items-center gap-2 px-4 py-2 bg-blue-500/10 border border-blue-500/30 rounded-lg">
+                                    <Award className="w-5 h-5 text-blue-400" />
+                                    <span className="text-2xl font-bold text-blue-400">{entry.average_score.toFixed(1)}</span>
+                                    <span className="text-sm text-gray-400">/ 400</span>
+                                  </div>
+                                </td>
+                                <td className="px-6 py-4 text-center">
+                                  <span className="text-gray-300">{entry.num_judges} {entry.num_judges === 1 ? 'judge' : 'judges'}</span>
+                                </td>
+                                <td className="px-6 py-4">
+                                  <div className="flex justify-end gap-2">
+                                    {entry.github_url && (
+                                      <a
+                                        href={entry.github_url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="p-2 bg-gray-800 hover:bg-gray-700 text-white rounded-lg transition"
+                                        title="View on GitHub"
+                                      >
+                                        <ExternalLink className="w-4 h-4" />
+                                      </a>
+                                    )}
+                                    {entry.demo_url && (
+                                      <a
+                                        href={entry.demo_url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="p-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition"
+                                        title="View Demo"
+                                      >
+                                        <ExternalLink className="w-4 h-4" />
+                                      </a>
+                                    )}
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-center py-12 bg-gray-900 border border-gray-800 rounded-xl">
+                      <Trophy className="w-16 h-16 text-gray-700 mx-auto mb-4" />
+                      <h3 className="text-xl font-semibold text-white mb-2">No Rankings Available</h3>
+                      <p className="text-gray-400">Projects have not been scored yet.</p>
                     </div>
                   )}
                 </div>

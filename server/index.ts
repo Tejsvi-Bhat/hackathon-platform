@@ -633,24 +633,24 @@ app.get('/api/hackathons/:id/leaderboard', async (req: Request, res: Response) =
 
     const result = await pool.query(
       `SELECT 
-        p.id,
-        p.name,
+        p.id as project_id,
+        p.name as project_name,
         p.description,
         p.github_url,
         p.demo_url,
-        json_agg(DISTINCT jsonb_build_object(
-          'userId', u.id,
-          'fullName', u.full_name
-        )) as team_members,
-        COALESCE(AVG(s.total_score), 0) as average_score,
-        COUNT(DISTINCT s.id) as judge_count,
-        RANK() OVER (ORDER BY AVG(s.total_score) DESC) as rank
+        COALESCE(
+          json_agg(u.full_name) FILTER (WHERE u.full_name IS NOT NULL),
+          '[]'
+        ) as team_members,
+        ROUND(AVG(s.total_score), 1) as average_score,
+        COUNT(DISTINCT s.judge_id) as num_judges
        FROM projects p
        LEFT JOIN project_members pm ON p.id = pm.project_id
        LEFT JOIN users u ON pm.user_id = u.id
        LEFT JOIN scores s ON p.id = s.project_id
        WHERE p.hackathon_id = $1
-       GROUP BY p.id
+       GROUP BY p.id, p.name, p.description, p.github_url, p.demo_url
+       HAVING AVG(s.total_score) IS NOT NULL
        ORDER BY average_score DESC`,
       [id]
     );
