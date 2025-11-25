@@ -101,13 +101,15 @@ export default function ProjectDetail() {
       setLoading(true);
       const token = localStorage.getItem('token');
       
-      // Fetch user data
+      let userData = null;
+      
+      // Fetch user data first
       if (token) {
         const userRes = await fetch(`${apiUrl}/api/users/me`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         if (userRes.ok) {
-          const userData = await userRes.json();
+          userData = await userRes.json();
           setUser(userData);
         }
       }
@@ -124,18 +126,13 @@ export default function ProjectDetail() {
       const projectData = await projectRes.json();
       setProject(projectData);
 
-      // Check if user is creator
-      if (token && projectData.team_members) {
-        const userRes = await fetch(`${apiUrl}/api/users/me`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        if (userRes.ok) {
-          const userData = await userRes.json();
-          const isMember = projectData.team_members.some(
-            (member: any) => member.id === userData.id
-          );
-          setIsCreator(isMember);
-        }
+      // Check if user is creator/team member
+      if (userData && projectData.team_members) {
+        const isMember = projectData.team_members.some(
+          (member: any) => member && member.id === userData.id
+        );
+        setIsCreator(isMember);
+        console.log('Is team member:', isMember, 'User ID:', userData.id, 'Team members:', projectData.team_members);
       }
 
       // Check if user can score (judge)
@@ -410,7 +407,7 @@ export default function ProjectDetail() {
             <div className="flex flex-wrap gap-2 mb-4">
               {(editMode ? editedProject.tags : project.tags)?.map((tag, index) => (
                 <span
-                  key={index}
+                  key={`tag-${index}-${tag}`}
                   className="px-3 py-1 bg-blue-500/10 border border-blue-500/30 rounded-full text-blue-400 text-sm"
                 >
                   {tag}

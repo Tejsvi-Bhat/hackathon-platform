@@ -495,7 +495,7 @@ export default function DashboardPage() {
                 {projects.length > 0 ? (
                   <div className="grid md:grid-cols-2 gap-6">
                     {projects.map((project) => (
-                      <div key={project.id} className="bg-gray-900 border border-gray-800 rounded-xl p-6 hover:border-blue-500/50 transition">
+                      <Link key={project.id} href={`/projects/${project.id}`} className="bg-gray-900 border border-gray-800 rounded-xl p-6 hover:border-blue-500/50 transition block">
                         {project.image_url && (
                           <img 
                             src={project.image_url} 
@@ -509,7 +509,7 @@ export default function DashboardPage() {
                         {project.tags && project.tags.length > 0 && (
                           <div className="flex flex-wrap gap-2 mb-4">
                             {project.tags.map((tag, idx) => (
-                              <span key={idx} className="px-3 py-1 bg-blue-500/10 text-blue-400 text-xs rounded-full border border-blue-500/20">
+                              <span key={`tag-${project.id}-${idx}-${tag}`} className="px-3 py-1 bg-blue-500/10 text-blue-400 text-xs rounded-full border border-blue-500/20">
                                 {tag}
                               </span>
                             ))}
@@ -522,6 +522,7 @@ export default function DashboardPage() {
                               href={project.github_url}
                               target="_blank"
                               rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()}
                               className="flex items-center gap-2 px-4 py-2 bg-gray-800 text-gray-300 rounded-lg hover:bg-gray-700 transition text-sm"
                             >
                               <Github className="w-4 h-4" />
@@ -533,6 +534,7 @@ export default function DashboardPage() {
                               href={project.demo_url}
                               target="_blank"
                               rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()}
                               className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm"
                             >
                               <ExternalLink className="w-4 h-4" />
@@ -546,7 +548,7 @@ export default function DashboardPage() {
                             Submitted to: {project.hackathon_name}
                           </p>
                         )}
-                      </div>
+                      </Link>
                     ))}
                   </div>
                 ) : (
@@ -1341,7 +1343,7 @@ export default function DashboardPage() {
                       Added Prizes ({prizes.length})
                     </h3>
                     {prizes.map((prize, index) => (
-                      <div key={index} className="bg-gray-800 border border-gray-700 rounded-lg p-4">
+                      <div key={`prize-${index}-${prize.title}`} className="bg-gray-800 border border-gray-700 rounded-lg p-4">
                         <div className="flex items-start justify-between">
                           <div className="flex-1">
                             <div className="flex items-center gap-3 mb-2">
