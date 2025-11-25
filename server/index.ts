@@ -1014,6 +1014,178 @@ app.post('/api/projects', authenticate, async (req: AuthRequest, res: Response) 
   }
 });
 
+// Get single project by ID
+app.get('/api/projects/:id', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    
+    const result = await pool.query(
+      `SELECT p.*, h.name as hackathon_name, h.id as hackathon_id,
+              COALESCE(
+                json_agg(
+                  json_build_object(
+                    'id', u.id, 
+                    'name', u.full_name,
+                    'role', pm.role
+                  )
+                ) FILTER (WHERE u.id IS NOT NULL), '[]'
+              ) as team_members
+       FROM projects p
+       LEFT JOIN hackathons h ON p.hackathon_id = h.id
+       LEFT JOIN project_members pm ON p.id = pm.project_id
+       LEFT JOIN users u ON pm.user_id = u.id
+       WHERE p.id = $1
+       GROUP BY p.id, h.name, h.id`,
+      [id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Project not found' });
+    }
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Error fetching project:', error);
+    res.status(500).json({ error: 'Failed to fetch project' });
+  }
+});
+
+// Update project
+app.put('/api/projects/:id', authenticate, async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { name, description, github_url, demo_url, video_url, tags } = req.body;
+
+    // Verify user is a team member
+    const memberCheck = await pool.query(
+      'SELECT * FROM project_members WHERE project_id = $1 AND user_id = $2',
+      [id, req.user!.userId]
+    );
+
+    if (memberCheck.rows.length === 0) {
+      return res.status(403).json({ error: 'Not authorized to edit this project' });
+    }
+
+    const result = await pool.query(
+      `UPDATE projects 
+       SET name = COALESCE($1, name),
+           description = COALESCE($2, description),
+           github_url = COALESCE($3, github_url),
+           demo_url = COALESCE($4, demo_url),
+           video_url = COALESCE($5, video_url),
+           tags = COALESCE($6, tags)
+       WHERE id = $7
+       RETURNING *`,
+      [name, description, github_url, demo_url, video_url, tags, id]
+    );
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Error updating project:', error);
+    res.status(500).json({ error: 'Failed to update project' });
+  }
+});
+
+// Toggle project visibility
+app.patch('/api/projects/:id/visibility', authenticate, async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { is_public } = req.body;
+
+    // Verify user is a team member
+    const memberCheck = await pool.query(
+      'SELECT * FROM project_members WHERE project_id = $1 AND user_id = $2',
+      [id, req.user!.userId]
+    );
+
+    if (memberCheck.rows.length === 0) {
+      return res.status(403).json({ error: 'Not authorized to modify this project' });
+    }
+
+    const result = await pool.query(
+      'UPDATE projects SET is_public = $1 WHERE id = $2 RETURNING *',
+      [is_public, id]
+    );
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Error updating visibility:', error);
+    res.status(500).json({ error: 'Failed to update visibility' });
+  }
+});
+
+// Check if user can score project
+app.get('/api/projects/:id/can-score', authenticate, authorize('judge'), async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    // Get project's hackathon
+    const projectResult = await pool.query(
+      'SELECT hackathon_id FROM projects WHERE id = $1',
+      [id]
+    );
+
+    if (projectResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Project not found' });
+    }
+
+    const hackathonId = projectResult.rows[0].hackathon_id;
+
+    if (!hackathonId) {
+      return res.json({ canScore: false, existingScore: null });
+    }
+
+    // Check if judge is assigned to this hackathon
+    const judgeCheck = await pool.query(
+      'SELECT * FROM hackathon_judges WHERE hackathon_id = $1 AND judge_id = $2',
+      [hackathonId, req.user!.userId]
+    );
+
+    if (judgeCheck.rows.length === 0) {
+      return res.json({ canScore: false, existingScore: null });
+    }
+
+    // Check for existing score
+    const scoreResult = await pool.query(
+      'SELECT * FROM scores WHERE project_id = $1 AND judge_id = $2',
+      [id, req.user!.userId]
+    );
+
+    res.json({
+      canScore: true,
+      existingScore: scoreResult.rows[0] || null
+    });
+  } catch (error) {
+    console.error('Error checking score permission:', error);
+    res.status(500).json({ error: 'Failed to check score permission' });
+  }
+});
+
+// Get average score for a project
+app.get('/api/projects/:id/average-score', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    const result = await pool.query(
+      `SELECT AVG(total_score) as average_score, COUNT(*) as judge_count
+       FROM scores
+       WHERE project_id = $1`,
+      [id]
+    );
+
+    const avgScore = result.rows[0].average_score;
+    const judgeCount = parseInt(result.rows[0].judge_count);
+
+    res.json({
+      average_score: avgScore ? parseFloat(avgScore) : null,
+      judge_count: judgeCount
+    });
+  } catch (error) {
+    console.error('Error fetching average score:', error);
+    res.status(500).json({ error: 'Failed to fetch average score' });
+  }
+});
+
 // Get user's registrations
 app.get('/api/users/me/registrations', authenticate, async (req: AuthRequest, res: Response) => {
   try {
