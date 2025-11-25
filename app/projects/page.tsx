@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import Link from 'next/link';
 import Sidebar from '../components/Sidebar';
 import TopNav from '../components/TopNav';
 import { Code, Search, Filter, Github, ExternalLink, Tag, Users, Calendar, Trophy } from 'lucide-react';
@@ -180,10 +179,10 @@ export default function ProjectsPage() {
           ) : (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredProjects.map((project) => (
-                <Link
+                <div
                   key={project.id}
-                  href={`/projects/${project.id}`}
-                  className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden hover:border-blue-500/50 transition group"
+                  className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden hover:border-blue-500/50 transition group cursor-pointer"
+                  onClick={() => window.location.href = `/projects/${project.id}`}
                 >
                   {/* Project Image */}
                   {project.video_url ? (
@@ -263,7 +262,7 @@ export default function ProjectsPage() {
                       )}
                     </div>
                   </div>
-                </Link>
+                </div>
               ))}
             </div>
           )}

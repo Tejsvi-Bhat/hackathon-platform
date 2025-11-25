@@ -504,10 +504,10 @@ export default function ProjectDetail() {
                       className="flex items-center gap-3 p-3 bg-gray-800 rounded-lg"
                     >
                       <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-semibold">
-                        {member.name.charAt(0).toUpperCase()}
+                        {member.name ? member.name.charAt(0).toUpperCase() : '?'}
                       </div>
                       <div>
-                        <div className="text-white font-medium">{member.name}</div>
+                        <div className="text-white font-medium">{member.name || 'Unknown User'}</div>
                         {member.role && (
                           <div className="text-gray-400 text-sm">{member.role}</div>
                         )}
