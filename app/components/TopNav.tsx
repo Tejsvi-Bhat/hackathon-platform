@@ -134,19 +134,34 @@ export default function TopNav({ onOpenLogin, showLoginModal: externalShowModal,
               </div>
             </>
           ) : (
-            <button
-              onClick={() => {
-                if (onOpenLogin) {
-                  onOpenLogin();
-                } else {
-                  setInternalShowModal(true);
-                }
-                setIsLoginMode(true);
-              }}
-              className="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium"
-            >
-              Login
-            </button>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => {
+                  if (onOpenLogin) {
+                    onOpenLogin();
+                  } else {
+                    setInternalShowModal(true);
+                  }
+                  setIsLoginMode(true);
+                }}
+                className="px-6 py-2.5 bg-gray-800 text-white rounded-lg hover:bg-gray-700 transition font-medium border border-gray-700"
+              >
+                Login
+              </button>
+              <button
+                onClick={() => {
+                  if (onOpenLogin) {
+                    onOpenLogin();
+                  } else {
+                    setInternalShowModal(true);
+                  }
+                  setIsLoginMode(false);
+                }}
+                className="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium"
+              >
+                Register
+              </button>
+            </div>
           )}
         </div>
       </div>
