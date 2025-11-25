@@ -927,6 +927,34 @@ app.get('/api/dashboard/stats', authenticate, async (req: AuthRequest, res: Resp
 
 // ============ PROJECT ROUTES ============
 
+// Get all public projects
+app.get('/api/projects', async (req: Request, res: Response) => {
+  try {
+    const result = await pool.query(
+      `SELECT p.id, p.name, p.description, p.github_url, p.demo_url, p.video_url,
+              p.submitted_at, p.is_public, p.tags,
+              h.name as hackathon_name,
+              COALESCE(
+                json_agg(
+                  json_build_object('id', u.id, 'name', u.full_name)
+                ) FILTER (WHERE u.id IS NOT NULL), '[]'
+              ) as team_members
+       FROM projects p
+       LEFT JOIN hackathons h ON p.hackathon_id = h.id
+       LEFT JOIN project_members pm ON p.id = pm.project_id
+       LEFT JOIN users u ON pm.user_id = u.id
+       WHERE p.is_public = TRUE
+       GROUP BY p.id, h.name
+       ORDER BY p.submitted_at DESC`
+    );
+
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error fetching projects:', error);
+    res.status(500).json({ error: 'Failed to fetch projects' });
+  }
+});
+
 // Get user's projects
 app.get('/api/users/me/projects', authenticate, async (req: AuthRequest, res: Response) => {
   try {
