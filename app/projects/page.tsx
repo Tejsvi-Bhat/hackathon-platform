@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Sidebar from '../components/Sidebar';
 import TopNav from '../components/TopNav';
-import { Code, Search, Filter, Github, ExternalLink, Tag, Users, Calendar } from 'lucide-react';
+import { Code, Search, Filter, Github, ExternalLink, Tag, Users, Calendar, Trophy } from 'lucide-react';
 
 interface Project {
   id: number;
