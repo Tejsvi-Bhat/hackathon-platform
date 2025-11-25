@@ -1,7 +1,7 @@
 'use client';
 
 import { X, Mail, Lock, Eye, EyeOff, Github, Chrome, UserCircle, Trophy, Users } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 interface LoginModalProps {
   isOpen: boolean;
@@ -19,6 +19,11 @@ export default function LoginModal({ isOpen, onClose, onLoginSuccess, initialMod
   const [role, setRole] = useState<'organizer' | 'participant' | 'judge'>('participant');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // Update isLogin when initialMode changes
+  useEffect(() => {
+    setIsLogin(initialMode === 'login');
+  }, [initialMode]);
 
   if (!isOpen) return null;
 

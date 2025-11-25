@@ -32,7 +32,7 @@ function HomePageContent() {
   const [filteredHackathons, setFilteredHackathons] = useState<Hackathon[]>([]);
   const [featuredIndex, setFeaturedIndex] = useState(0);
   const [showLoginModal, setShowLoginModal] = useState(false);
-  const [loginMode, setLoginMode] = useState(true);
+  const [loginMode, setLoginMode] = useState<'login' | 'register'>('login');
   const [filters, setFilters] = useState({
     prizeRange: 'all',
     ecosystem: 'all',
@@ -45,10 +45,10 @@ function HomePageContent() {
     
     // Check URL parameters for login/register triggers
     if (searchParams.get('login') === 'true') {
-      setLoginMode(true);
+      setLoginMode('login');
       setShowLoginModal(true);
     } else if (searchParams.get('register') === 'true') {
-      setLoginMode(false);
+      setLoginMode('register');
       setShowLoginModal(true);
     }
   }, [searchParams]);

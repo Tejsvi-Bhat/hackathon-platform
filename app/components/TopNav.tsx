@@ -11,14 +11,14 @@ interface TopNavProps {
   onOpenLogin?: () => void;
   showLoginModal?: boolean;
   onCloseLoginModal?: () => void;
-  initialLoginMode?: boolean;
+  initialLoginMode?: 'login' | 'register';
 }
 
-export default function TopNav({ onOpenLogin, showLoginModal: externalShowModal, onCloseLoginModal, initialLoginMode = true }: TopNavProps) {
+export default function TopNav({ onOpenLogin, showLoginModal: externalShowModal, onCloseLoginModal, initialLoginMode = 'login' }: TopNavProps) {
   const [user, setUser] = useState<any>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [internalShowModal, setInternalShowModal] = useState(false);
-  const [isLoginMode, setIsLoginMode] = useState(initialLoginMode);
+  const [currentMode, setCurrentMode] = useState<'login' | 'register'>(initialLoginMode);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const router = useRouter();
 
@@ -142,7 +142,7 @@ export default function TopNav({ onOpenLogin, showLoginModal: externalShowModal,
                   } else {
                     setInternalShowModal(true);
                   }
-                  setIsLoginMode(true);
+                  setCurrentMode('login');
                 }}
                 className="px-6 py-2.5 bg-gray-800 text-white rounded-lg hover:bg-gray-700 transition font-medium border border-gray-700"
               >
@@ -155,7 +155,7 @@ export default function TopNav({ onOpenLogin, showLoginModal: externalShowModal,
                   } else {
                     setInternalShowModal(true);
                   }
-                  setIsLoginMode(false);
+                  setCurrentMode('register');
                 }}
                 className="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium"
               >
@@ -171,7 +171,7 @@ export default function TopNav({ onOpenLogin, showLoginModal: externalShowModal,
         isOpen={showLoginModal}
         onClose={() => setShowLoginModal(false)}
         onLoginSuccess={handleLoginSuccess}
-        initialMode={isLoginMode ? 'login' : 'register'}
+        initialMode={currentMode}
       />
 
       {/* Logout Confirmation Dialog */}
