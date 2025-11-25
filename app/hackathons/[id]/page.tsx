@@ -461,7 +461,7 @@ export default function HackathonDetailPage() {
                         
                         <div className="flex flex-wrap gap-2 mb-4">
                           {project.tags?.map((tag, idx) => (
-                            <span key={idx} className="px-2 py-1 bg-gray-800 text-gray-300 rounded text-xs">
+                            <span key={`tag-${project.id}-${idx}-${tag}`} className="px-2 py-1 bg-gray-800 text-gray-300 rounded text-xs">
                               {tag}
                             </span>
                           ))}
@@ -548,7 +548,7 @@ export default function HackathonDetailPage() {
                                 <td className="px-6 py-4">
                                   <div className="flex flex-wrap gap-1">
                                     {entry.team_members?.slice(0, 3).map((member, idx) => (
-                                      <span key={idx} className="px-2 py-1 bg-gray-800 text-gray-300 rounded text-xs">
+                                      <span key={`member-${entry.project_id}-${idx}-${member}`} className="px-2 py-1 bg-gray-800 text-gray-300 rounded text-xs">
                                         {member}
                                       </span>
                                     ))}

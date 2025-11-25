@@ -320,7 +320,7 @@ function HomePageContent() {
                   <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
                     {featuredHackathons.map((_, idx) => (
                       <button
-                        key={idx}
+                        key={`dot-${idx}`}
                         onClick={() => setFeaturedIndex(idx)}
                         className={`w-2 h-2 rounded-full transition ${
                           idx === featuredIndex ? 'bg-blue-500 w-8' : 'bg-gray-600'
@@ -376,7 +376,7 @@ function HomePageContent() {
                     <div className="flex flex-wrap gap-2">
                       {hackathon.tech_stack?.map((tech, idx) => (
                         <span
-                          key={idx}
+                          key={`tech-${hackathon.id}-${idx}-${tech}`}
                           className="px-2 py-1 bg-gray-800 text-gray-300 rounded text-xs"
                         >
                           {tech}

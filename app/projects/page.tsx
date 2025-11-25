@@ -218,7 +218,7 @@ export default function ProjectsPage() {
                     {project.tags && project.tags.length > 0 && (
                       <div className="flex flex-wrap gap-2 mb-4">
                         {project.tags.slice(0, 3).map((tag, idx) => (
-                          <span key={idx} className="px-2 py-1 bg-gray-800 text-gray-300 rounded text-xs">
+                          <span key={`tag-${project.id}-${idx}-${tag}`} className="px-2 py-1 bg-gray-800 text-gray-300 rounded text-xs">
                             {tag}
                           </span>
                         ))}
