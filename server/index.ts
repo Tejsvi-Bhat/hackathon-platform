@@ -394,32 +394,7 @@ app.get('/api/hackathons/:id', async (req: Request, res: Response) => {
         try {
           projects = await getProjectsFromChain(hackathonId);
           
-          // Map blockchain projects to database projects to get correct IDs
-          const projectsWithDbIds = [];
-          for (let i = 0; i < projects.length; i++) {
-            const blockchainProject = projects[i];
-            
-            // Find corresponding database project
-            const dbResult = await pool.query(
-              'SELECT p.id, p.name FROM projects p JOIN hackathons h ON p.hackathon_id = h.id WHERE h.blockchain_id = $1 AND p.name = $2',
-              [hackathonId, blockchainProject.name]
-            );
-            
-            if (dbResult.rows.length > 0) {
-              // Use database ID if found
-              projectsWithDbIds.push({
-                ...blockchainProject,
-                databaseId: dbResult.rows[0].id
-              });
-            } else {
-              // Fallback to blockchain project ID
-              projectsWithDbIds.push({
-                ...blockchainProject,
-                databaseId: i + 1
-              });
-            }
-          }
-          projects = projectsWithDbIds;
+          // Projects will use blockchain project IDs for consistency
           
         } catch (error) {
           console.log(`No projects found for hackathon ${hackathonId}`);
@@ -495,7 +470,7 @@ app.get('/api/hackathons/:id', async (req: Request, res: Response) => {
             bio: null
           })),
           projects: projects.map((project: any, index: number) => ({
-            id: project.databaseId || (index + 1),  // Use database ID if available
+            id: project.id,  // Use blockchain project ID (e.g., "1-1", "2-1")
             name: project.name,
             description: project.description,
             github_url: project.githubUrl,
@@ -1610,6 +1585,7 @@ app.patch('/api/projects/:id/visibility', authenticate, async (req: AuthRequest,
 app.get('/api/projects/:id/can-score', authenticate, authorize('judge'), async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
+    console.log(`🔍 [CAN-SCORE] Project ID: ${id}, User: ${req.user!.userId}, Wallet: ${req.user!.walletAddress}`);
 
     // Get project's hackathon - check both database ID and blockchain project ID
     let projectQuery = 'SELECT id, hackathon_id FROM projects WHERE ';
@@ -1623,16 +1599,20 @@ app.get('/api/projects/:id/can-score', authenticate, authorize('judge'), async (
     }
 
     const projectResult = await pool.query(projectQuery, [queryParam]);
+    console.log(`🔍 [CAN-SCORE] Project query result:`, projectResult.rows);
 
     if (projectResult.rows.length === 0) {
+      console.log(`❌ [CAN-SCORE] Project not found for ID: ${id}`);
       return res.status(404).json({ error: 'Project not found' });
     }
 
     const project = projectResult.rows[0];
     const projectId = project.id; // Use database ID for further queries
     const hackathonId = project.hackathon_id;
+    console.log(`✅ [CAN-SCORE] Found project - DB ID: ${projectId}, Hackathon ID: ${hackathonId}`);
 
     if (!hackathonId) {
+      console.log(`❌ [CAN-SCORE] No hackathon ID for project`);
       return res.json({ canScore: false, existingScore: null });
     }
 
@@ -1642,45 +1622,60 @@ app.get('/api/projects/:id/can-score', authenticate, authorize('judge'), async (
       'SELECT mode, blockchain_id FROM hackathons WHERE id = $1',
       [hackathonId]
     );
+    console.log(`🔍 [CAN-SCORE] Hackathon result:`, hackathonResult.rows);
     
     const isBlockchainHackathon = hackathonResult.rows[0]?.mode === 'blockchain';
+    console.log(`🔍 [CAN-SCORE] Is blockchain hackathon: ${isBlockchainHackathon}`);
     
     if (isBlockchainHackathon) {
       // For blockchain hackathons, check judges from smart contract
       try {
         const { getJudgesFromChain } = await import('../lib/blockchain.js');
         const contractJudges = await getJudgesFromChain(hackathonResult.rows[0].blockchain_id);
+        console.log(`🔍 [CAN-SCORE] Contract judges:`, contractJudges);
         
         const userWalletAddress = req.user!.walletAddress?.toLowerCase();
+        console.log(`🔍 [CAN-SCORE] User wallet address: ${userWalletAddress}`);
+        
         const isAuthorizedJudge = contractJudges.some((judge: any) => 
           judge.address?.toLowerCase() === userWalletAddress
         );
+        console.log(`🔍 [CAN-SCORE] Is authorized judge: ${isAuthorizedJudge}`);
         
         if (!isAuthorizedJudge) {
+          console.log(`❌ [CAN-SCORE] User not authorized to judge this hackathon`);
           return res.json({ canScore: false, existingScore: null });
         }
+        console.log(`✅ [CAN-SCORE] User authorized as blockchain judge`);
       } catch (error) {
-        console.error('Error fetching judges from contract:', error);
+        console.error('❌ [CAN-SCORE] Error fetching judges from contract:', error);
         return res.json({ canScore: false, existingScore: null });
       }
     } else {
       // For regular hackathons, require explicit judge assignment in database
+      console.log(`🔍 [CAN-SCORE] Checking database judge assignment for hackathon ${hackathonId}, judge ${req.user!.userId}`);
       const judgeCheck = await pool.query(
         'SELECT * FROM hackathon_judges WHERE hackathon_id = $1 AND judge_id = $2',
         [hackathonId, req.user!.userId]
       );
+      console.log(`🔍 [CAN-SCORE] Database judge check result:`, judgeCheck.rows);
 
       if (judgeCheck.rows.length === 0) {
+        console.log(`❌ [CAN-SCORE] User not assigned as judge in database`);
         return res.json({ canScore: false, existingScore: null });
       }
+      console.log(`✅ [CAN-SCORE] User authorized as database judge`);
     }
 
     // Check for existing score (use database project ID)
+    console.log(`🔍 [CAN-SCORE] Checking existing scores for project ${projectId}, judge ${req.user!.userId}`);
     const scoreResult = await pool.query(
       'SELECT * FROM scores WHERE project_id = $1 AND judge_id = $2',
       [projectId, req.user!.userId]
     );
+    console.log(`🔍 [CAN-SCORE] Existing score:`, scoreResult.rows[0] || 'none');
 
+    console.log(`✅ [CAN-SCORE] Final result: canScore=true`);
     res.json({
       canScore: true,
       existingScore: scoreResult.rows[0] || null
