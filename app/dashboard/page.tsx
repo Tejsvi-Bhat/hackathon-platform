@@ -521,13 +521,15 @@ export default function DashboardPage() {
         const HACKERCOIN = 1_000_000;
         const totalWei = ethers.BigNumber.from(totalHC).mul(HACKERCOIN);
         
-        console.log('Creating hackathon:', {
+        // Log with all values converted to safe types
+        const logData = {
           totalPrizePool,
           judgeFees,
           totalHC,
-          totalWei: totalWei.toString(),
-          totalETH: ethers.utils.formatEther(totalWei)
-        });
+          totalWeiString: totalWei.toString(),
+          totalETHString: ethers.utils.formatEther(totalWei)
+        };
+        console.log('Creating hackathon:', logData);
 
         // Convert dates to Unix timestamps (seconds since epoch)
         const regDeadlineTimestamp = Math.floor(new Date(newHackathon.registration_deadline).getTime() / 1000);

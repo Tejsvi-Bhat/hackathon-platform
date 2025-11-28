@@ -259,7 +259,7 @@ export function BlockchainProvider({ children }: { children: ReactNode }) {
       // Check if user is registered and load their info
       await checkAndLoadUserInfo(address);
       
-      console.log('Silent reconnection successful');
+      console.log('Silent reconnection successful v1.1');
       return true;
     } catch (error) {
       console.error('Silent reconnection failed:', error);
