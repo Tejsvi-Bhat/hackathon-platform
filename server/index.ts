@@ -393,12 +393,41 @@ app.get('/api/hackathons/:id', async (req: Request, res: Response) => {
         
         try {
           projects = await getProjectsFromChain(hackathonId);
+          
+          // Map blockchain projects to database projects to get correct IDs
+          const projectsWithDbIds = [];
+          for (let i = 0; i < projects.length; i++) {
+            const blockchainProject = projects[i];
+            
+            // Find corresponding database project
+            const dbResult = await pool.query(
+              'SELECT p.id, p.name FROM projects p JOIN hackathons h ON p.hackathon_id = h.id WHERE h.blockchain_id = $1 AND p.name = $2',
+              [hackathonId, blockchainProject.name]
+            );
+            
+            if (dbResult.rows.length > 0) {
+              // Use database ID if found
+              projectsWithDbIds.push({
+                ...blockchainProject,
+                databaseId: dbResult.rows[0].id
+              });
+            } else {
+              // Fallback to blockchain project ID
+              projectsWithDbIds.push({
+                ...blockchainProject,
+                databaseId: i + 1
+              });
+            }
+          }
+          projects = projectsWithDbIds;
+          
         } catch (error) {
           console.log(`No projects found for hackathon ${hackathonId}`);
         }
         
         try {
           judges = await getJudgesFromChain(hackathonId);
+          console.log(`Found ${judges.length} judges in contract for hackathon ${hackathonId}`);
         } catch (error) {
           console.log(`No judges found for hackathon ${hackathonId}`);
         }
@@ -466,7 +495,7 @@ app.get('/api/hackathons/:id', async (req: Request, res: Response) => {
             bio: null
           })),
           projects: projects.map((project: any, index: number) => ({
-            id: index + 1,
+            id: project.databaseId || (index + 1),  // Use database ID if available
             name: project.name,
             description: project.description,
             github_url: project.githubUrl,
@@ -1608,13 +1637,42 @@ app.get('/api/projects/:id/can-score', authenticate, authorize('judge'), async (
     }
 
     // Check if judge is assigned to this hackathon
-    const judgeCheck = await pool.query(
-      'SELECT * FROM hackathon_judges WHERE hackathon_id = $1 AND judge_id = $2',
-      [hackathonId, req.user!.userId]
+    // For blockchain hackathons, check contract directly
+    const hackathonResult = await pool.query(
+      'SELECT mode, blockchain_id FROM hackathons WHERE id = $1',
+      [hackathonId]
     );
+    
+    const isBlockchainHackathon = hackathonResult.rows[0]?.mode === 'blockchain';
+    
+    if (isBlockchainHackathon) {
+      // For blockchain hackathons, check judges from smart contract
+      try {
+        const { getJudgesFromChain } = await import('../lib/blockchain.js');
+        const contractJudges = await getJudgesFromChain(hackathonResult.rows[0].blockchain_id);
+        
+        const userWalletAddress = req.user!.walletAddress?.toLowerCase();
+        const isAuthorizedJudge = contractJudges.some((judge: any) => 
+          judge.address?.toLowerCase() === userWalletAddress
+        );
+        
+        if (!isAuthorizedJudge) {
+          return res.json({ canScore: false, existingScore: null });
+        }
+      } catch (error) {
+        console.error('Error fetching judges from contract:', error);
+        return res.json({ canScore: false, existingScore: null });
+      }
+    } else {
+      // For regular hackathons, require explicit judge assignment in database
+      const judgeCheck = await pool.query(
+        'SELECT * FROM hackathon_judges WHERE hackathon_id = $1 AND judge_id = $2',
+        [hackathonId, req.user!.userId]
+      );
 
-    if (judgeCheck.rows.length === 0) {
-      return res.json({ canScore: false, existingScore: null });
+      if (judgeCheck.rows.length === 0) {
+        return res.json({ canScore: false, existingScore: null });
+      }
     }
 
     // Check for existing score (use database project ID)
