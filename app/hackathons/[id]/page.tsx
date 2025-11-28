@@ -232,13 +232,16 @@ export default function HackathonDetailPage() {
   };
 
   const handleRegister = async () => {
-    // Get the correct token based on mode
-    const token = isBlockchainMode 
-      ? localStorage.getItem('blockchainToken') 
-      : localStorage.getItem('token');
+    // Try to get any available token (blockchain or traditional)
+    const blockchainToken = localStorage.getItem('blockchainToken');
+    const regularToken = localStorage.getItem('token');
+    const token = blockchainToken || regularToken;
     
     if (!token) {
       console.error('No authentication token found');
+      console.log('Blockchain token:', blockchainToken ? 'Present' : 'Missing');
+      console.log('Regular token:', regularToken ? 'Present' : 'Missing');
+      console.log('Is blockchain mode:', isBlockchainMode);
       alert('Please login first');
       router.push('/?login=true');
       return;
@@ -337,12 +340,15 @@ export default function HackathonDetailPage() {
       return;
     }
 
-    const token = localStorage.getItem('blockchainToken');
+    const blockchainToken = localStorage.getItem('blockchainToken');
+    const regularToken = localStorage.getItem('token');
+    const token = blockchainToken || regularToken;
+    
     if (!token) {
       setSubmissionStatus({
         type: 'error',
         message: 'Authentication required',
-        details: 'Please login with your wallet first'
+        details: 'Please login first'
       });
       setShowSubmissionModal(true);
       return;
@@ -489,7 +495,9 @@ export default function HackathonDetailPage() {
   };
 
   const openProjectSelector = async () => {
-    const token = localStorage.getItem('blockchainToken');
+    const blockchainToken = localStorage.getItem('blockchainToken');
+    const regularToken = localStorage.getItem('token');
+    const token = blockchainToken || regularToken;
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
     try {
