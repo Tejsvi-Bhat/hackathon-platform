@@ -192,7 +192,8 @@ export const getHackathonFromChain = async (hackathonId: number) => {
     active: rawHackathon.active,
     registrationDeadline: Number(rawHackathon.registrationDeadline.toString()),
     startDate: Number(rawHackathon.startDate.toString()),
-    endDate: Number(rawHackathon.endDate.toString())
+    endDate: Number(rawHackathon.endDate.toString()),
+    maxParticipants: 0 // Contract doesn't have this field, default to 0
   };
 };
 
