@@ -51,6 +51,25 @@ export function BlockchainProvider({ children }: { children: ReactNode }) {
   const [signer, setSigner] = useState<ethers.Signer | null>(null);
   const [contract, setContract] = useState<ethers.Contract | null>(null);
 
+  // Safe state setters that check for mounted state
+  const setSafeProvider = (newProvider: ethers.providers.Web3Provider | null) => {
+    if (isMounted) {
+      setProvider(newProvider);
+    }
+  };
+
+  const setSafeSigner = (newSigner: ethers.Signer | null) => {
+    if (isMounted) {
+      setSigner(newSigner);
+    }
+  };
+
+  const setSafeContract = (newContract: ethers.Contract | null) => {
+    if (isMounted) {
+      setContract(newContract);
+    }
+  };
+
   // Load blockchain mode from localStorage after mount (avoid hydration mismatch)
   useEffect(() => {
     setIsMounted(true);
@@ -233,9 +252,9 @@ export function BlockchainProvider({ children }: { children: ReactNode }) {
       setWalletAddress(address);
       setBalance(ethBalance);
       setBalanceInHC(hcBalance);
-      setProvider(web3Provider);
-      setSigner(web3Signer);
-      setContract(contractInstance);
+      setSafeProvider(web3Provider);
+      setSafeSigner(web3Signer);
+      setSafeContract(contractInstance);
 
       // Check if user is registered and load their info
       await checkAndLoadUserInfo(address);
@@ -317,9 +336,9 @@ export function BlockchainProvider({ children }: { children: ReactNode }) {
       setWalletAddress(address);
       setBalance(ethBalance);
       setBalanceInHC(hcBalance);
-      setProvider(web3Provider);
-      setSigner(web3Signer);
-      setContract(contractInstance);
+      setSafeProvider(web3Provider);
+      setSafeSigner(web3Signer);
+      setSafeContract(contractInstance);
 
       // Store wallet address in localStorage for persistence across navigation
       localStorage.setItem('walletAddress', address.toLowerCase());
@@ -339,9 +358,9 @@ export function BlockchainProvider({ children }: { children: ReactNode }) {
     setWalletAddress(null);
     setBalance('0');
     setBalanceInHC('0');
-    setProvider(null);
-    setSigner(null);
-    setContract(null);
+    setSafeProvider(null);
+    setSafeSigner(null);
+    setSafeContract(null);
     
     // Clear any cached data
     if (typeof window !== 'undefined') {
