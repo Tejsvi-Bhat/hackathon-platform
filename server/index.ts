@@ -226,7 +226,7 @@ app.get('/api/hackathons', async (req: Request, res: Response) => {
         const hackathonCount = await getHackathonCountFromChain();
         console.log(`📊 Total hackathons on chain: ${hackathonCount}`);
         
-        const allHackathons = [];
+        const allHackathons: any[] = [];
         
         // Get all hackathons from the contract
         for (let i = 1; i <= hackathonCount; i++) {
@@ -261,7 +261,7 @@ app.get('/api/hackathons', async (req: Request, res: Response) => {
             
             // Get prizes for this hackathon to calculate total prize pool
             let totalPrizePool = 0;
-            let prizes = [];
+            let prizes: any[] = [];
             try {
               prizes = await getPrizesFromChain(i);
               if (prizes && prizes.length > 0) {
@@ -381,9 +381,9 @@ app.get('/api/hackathons/:id', async (req: Request, res: Response) => {
         const hackathon = await getHackathonFromChain(hackathonId);
         
         // Get additional data from contract
-        let prizes = [];
-        let projects = [];
-        let judges = [];
+        let prizes: any[] = [];
+        let projects: any[] = [];
+        let judges: any[] = [];
         
         try {
           prizes = await getPrizesFromChain(hackathonId);
@@ -1180,7 +1180,7 @@ app.get('/api/projects', async (req: Request, res: Response) => {
         const { getHackathonCountFromChain, getHackathonFromChain, getProjectsFromChain } = await import('../lib/blockchain.js');
         
         const hackathonCount = await getHackathonCountFromChain();
-        const allProjects = [];
+        const allProjects: any[] = [];
         
         // Get projects from all hackathons
         for (let i = 1; i <= hackathonCount; i++) {
@@ -1707,7 +1707,7 @@ app.get('/api/users/me/hackathons', authenticateUnified, authorize('organizer'),
         console.log(`📊 Total hackathons on chain: ${hackathonCount}`);
         
         const organizer = req.user!.walletAddress!.toLowerCase();
-        const organizerHackathons = [];
+        const organizerHackathons: any[] = [];
         
         // Check each hackathon to see if this user is the organizer
         for (let i = 1; i <= hackathonCount; i++) {
@@ -1824,7 +1824,7 @@ app.get('/api/users/me/judge-hackathons', authenticateUnified, authorize('judge'
         const assignedHackathonIds = await getHackathonsForJudge(walletAddress);
         console.log(`Found ${assignedHackathonIds.length} assigned hackathons for judge:`, assignedHackathonIds);
         
-        const assignedHackathons = [];
+        const assignedHackathons: any[] = [];
         
         // Get details for each assigned hackathon
         for (const hackathonId of assignedHackathonIds) {
