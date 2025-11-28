@@ -2019,10 +2019,11 @@ app.get('/health', (req: Request, res: Response) => {
 app.get('/info', (req: Request, res: Response) => {
   res.json({ 
     name: 'Hackathon Platform API',
-    version: '1.0.0',
+    version: '1.0.1',
     mode: process.env.DEFAULT_MODE || 'database',
     blockchain: process.env.NEXT_PUBLIC_CONTRACT_ADDRESS ? 'enabled' : 'disabled',
-    environment: process.env.NODE_ENV || 'development'
+    environment: process.env.NODE_ENV || 'development',
+    timestamp: new Date().toISOString()
   });
 });
 
