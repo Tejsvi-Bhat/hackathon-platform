@@ -1287,11 +1287,12 @@ app.get('/api/blockchain/projects', async (req: Request, res: Response) => {
        LEFT JOIN hackathons h ON p.hackathon_id = h.id
        LEFT JOIN project_members pm ON p.id = pm.project_id
        LEFT JOIN blockchain_users bu ON pm.member_address = bu.wallet_address
-       WHERE pm.member_address IS NOT NULL AND pm.user_id IS NULL
+       WHERE pm.member_address IS NOT NULL
        GROUP BY p.id, h.name
        ORDER BY p.submitted_at DESC`
     );
 
+    console.log(`Found ${result.rows.length} blockchain/mixed projects`);
     res.json(result.rows);
   } catch (error) {
     console.error('Error fetching blockchain projects:', error);
@@ -1398,7 +1399,7 @@ app.get('/api/blockchain/projects/:id', async (req: Request, res: Response) => {
        LEFT JOIN hackathons h ON p.hackathon_id = h.id
        LEFT JOIN project_members pm ON p.id = pm.project_id
        LEFT JOIN blockchain_users bu ON pm.member_address = bu.wallet_address
-       WHERE p.id = $1 AND pm.member_address IS NOT NULL AND pm.user_id IS NULL
+       WHERE p.blockchain_project_id = $1 AND pm.member_address IS NOT NULL
        GROUP BY p.id, h.name, h.id`,
       [id]
     );
