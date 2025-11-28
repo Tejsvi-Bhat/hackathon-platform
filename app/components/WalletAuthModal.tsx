@@ -19,6 +19,58 @@ export default function WalletAuthModal({ isOpen, onClose, onAuthSuccess }: Wall
   const [error, setError] = useState('');
   const { walletAddress, connectWallet, isConnecting } = useBlockchain();
 
+  // Function to perform login for existing users
+  const performLogin = async () => {
+    if (!walletAddress) return;
+    
+    try {
+      setIsLoading(true);
+      setError('');
+      
+      // Sign a message to prove ownership
+      const provider = new ethers.providers.Web3Provider(window.ethereum);
+      const signer = provider.getSigner();
+      const timestamp = Date.now();
+      const message = `Sign this message to authenticate on HackChain platform.\n\nWallet: ${walletAddress}\nTimestamp: ${timestamp}`;
+      const signature = await signer.signMessage(message);
+
+      // Perform login
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+      const response = await fetch(`${apiUrl}/api/blockchain-auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          walletAddress,
+          signature,
+          message,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Login failed');
+      }
+
+      const data = await response.json();
+
+      // Store token if provided
+      if (data.token) {
+        localStorage.setItem('blockchainToken', data.token);
+        console.log('✅ Blockchain token stored successfully');
+      }
+
+      onAuthSuccess();
+      onClose();
+    } catch (err: any) {
+      console.error('Login error:', err);
+      setError(err.message || 'Failed to login');
+      // If login fails, allow manual registration
+      setTimeout(() => setStep('selectRole'), 100);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // Auto-advance to role selection if wallet is already connected
   useEffect(() => {
     if (isOpen && walletAddress && step === 'connect') {
@@ -30,9 +82,9 @@ export default function WalletAuthModal({ isOpen, onClose, onAuthSuccess }: Wall
           const data = await response.json();
           
           if (data.registered) {
-            // User already registered, close modal and let app fetch user data
-            onAuthSuccess();
-            onClose();
+            // User already registered, perform login to get token
+            console.log('User already registered, performing automatic login...');
+            await performLogin();
           } else {
             // User not registered, advance to role selection
             setTimeout(() => setStep('selectRole'), 100);
