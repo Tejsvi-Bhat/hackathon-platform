@@ -1,0 +1,767 @@
+{
+  "address": "0x8fC4da6c48449dd8492f5BC64E7496A8DB020006",
+  "abi": [
+    {
+      "type": "constructor",
+      "payable": false,
+      "inputs": []
+    },
+    {
+      "type": "event",
+      "anonymous": false,
+      "name": "HackathonCreated",
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "hackathonId",
+          "indexed": true
+        },
+        {
+          "type": "address",
+          "name": "organizer",
+          "indexed": true
+        },
+        {
+          "type": "string",
+          "name": "name",
+          "indexed": false
+        },
+        {
+          "type": "uint256",
+          "name": "prizePoolWei",
+          "indexed": false
+        },
+        {
+          "type": "uint256",
+          "name": "creationFeeWei",
+          "indexed": false
+        },
+        {
+          "type": "uint256",
+          "name": "judgeCount",
+          "indexed": false
+        }
+      ]
+    },
+    {
+      "type": "event",
+      "anonymous": false,
+      "name": "JudgeAdded",
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "hackathonId",
+          "indexed": true
+        },
+        {
+          "type": "address",
+          "name": "judge",
+          "indexed": true
+        },
+        {
+          "type": "uint256",
+          "name": "baseFeeWei",
+          "indexed": false
+        }
+      ]
+    },
+    {
+      "type": "event",
+      "anonymous": false,
+      "name": "JudgesPaid",
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "hackathonId",
+          "indexed": true
+        },
+        {
+          "type": "uint256",
+          "name": "totalAmount",
+          "indexed": false
+        },
+        {
+          "type": "uint256",
+          "name": "judgeCount",
+          "indexed": false
+        }
+      ]
+    },
+    {
+      "type": "event",
+      "anonymous": false,
+      "name": "OrganizerPaid",
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "hackathonId",
+          "indexed": true
+        },
+        {
+          "type": "address",
+          "name": "organizer",
+          "indexed": true
+        },
+        {
+          "type": "uint256",
+          "name": "amount",
+          "indexed": false
+        }
+      ]
+    },
+    {
+      "type": "event",
+      "anonymous": false,
+      "name": "PrizesDistributed",
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "hackathonId",
+          "indexed": true
+        },
+        {
+          "type": "address[]",
+          "name": "winners",
+          "indexed": false
+        },
+        {
+          "type": "uint256[]",
+          "name": "amounts",
+          "indexed": false
+        }
+      ]
+    },
+    {
+      "type": "event",
+      "anonymous": false,
+      "name": "ProjectSubmitted",
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "hackathonId",
+          "indexed": true
+        },
+        {
+          "type": "uint256",
+          "name": "projectId",
+          "indexed": true
+        },
+        {
+          "type": "address",
+          "name": "participant",
+          "indexed": true
+        },
+        {
+          "type": "string",
+          "name": "projectName",
+          "indexed": false
+        },
+        {
+          "type": "uint256",
+          "name": "submissionFeeWei",
+          "indexed": false
+        }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "HACKATHON_CREATION_FEE",
+      "constant": true,
+      "stateMutability": "view",
+      "payable": false,
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "HACKERCOIN",
+      "constant": true,
+      "stateMutability": "view",
+      "payable": false,
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "JUDGE_BASE_FEE",
+      "constant": true,
+      "stateMutability": "view",
+      "payable": false,
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "JUDGE_SHARE_PERCENT",
+      "constant": true,
+      "stateMutability": "view",
+      "payable": false,
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "ORGANIZER_SHARE_PERCENT",
+      "constant": true,
+      "stateMutability": "view",
+      "payable": false,
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "SUBMISSION_FEE",
+      "constant": true,
+      "stateMutability": "view",
+      "payable": false,
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "addJudge",
+      "constant": false,
+      "stateMutability": "payable",
+      "payable": true,
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "hackathonId"
+        },
+        {
+          "type": "address",
+          "name": "judgeAddress"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "type": "function",
+      "name": "createHackathon",
+      "constant": false,
+      "stateMutability": "payable",
+      "payable": true,
+      "inputs": [
+        {
+          "type": "string",
+          "name": "name"
+        },
+        {
+          "type": "string",
+          "name": "description"
+        },
+        {
+          "type": "address[]",
+          "name": "judgeAddresses"
+        },
+        {
+          "type": "tuple[]",
+          "name": "prizes",
+          "components": [
+            {
+              "type": "string",
+              "name": "title"
+            },
+            {
+              "type": "uint256",
+              "name": "amount"
+            },
+            {
+              "type": "uint256",
+              "name": "position"
+            }
+          ]
+        },
+        {
+          "type": "uint256",
+          "name": "registrationDeadline"
+        },
+        {
+          "type": "uint256",
+          "name": "startDate"
+        },
+        {
+          "type": "uint256",
+          "name": "endDate"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "type": "function",
+      "name": "distributePrizes",
+      "constant": false,
+      "payable": false,
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "hackathonId"
+        },
+        {
+          "type": "address[]",
+          "name": "winners"
+        },
+        {
+          "type": "uint256[]",
+          "name": "prizeAmountsHC"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "type": "function",
+      "name": "getHackathon",
+      "constant": true,
+      "stateMutability": "view",
+      "payable": false,
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "hackathonId"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "string",
+          "name": "name"
+        },
+        {
+          "type": "string",
+          "name": "description"
+        },
+        {
+          "type": "address",
+          "name": "organizer"
+        },
+        {
+          "type": "uint256",
+          "name": "prizePoolWei"
+        },
+        {
+          "type": "uint256",
+          "name": "projectCount"
+        },
+        {
+          "type": "uint256",
+          "name": "judgeCount"
+        },
+        {
+          "type": "bool",
+          "name": "active"
+        },
+        {
+          "type": "uint256",
+          "name": "registrationDeadline"
+        },
+        {
+          "type": "uint256",
+          "name": "startDate"
+        },
+        {
+          "type": "uint256",
+          "name": "endDate"
+        }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "getJudges",
+      "constant": true,
+      "stateMutability": "view",
+      "payable": false,
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "hackathonId"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "address[]"
+        }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "getPlatformBalance",
+      "constant": true,
+      "stateMutability": "view",
+      "payable": false,
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "getPrizes",
+      "constant": true,
+      "stateMutability": "view",
+      "payable": false,
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "hackathonId"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "tuple[]",
+          "components": [
+            {
+              "type": "string",
+              "name": "title"
+            },
+            {
+              "type": "uint256",
+              "name": "amount"
+            },
+            {
+              "type": "uint256",
+              "name": "position"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "getProject",
+      "constant": true,
+      "stateMutability": "view",
+      "payable": false,
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "hackathonId"
+        },
+        {
+          "type": "uint256",
+          "name": "projectId"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "string",
+          "name": "name"
+        },
+        {
+          "type": "string",
+          "name": "description"
+        },
+        {
+          "type": "string",
+          "name": "githubUrl"
+        },
+        {
+          "type": "string",
+          "name": "demoUrl"
+        },
+        {
+          "type": "address",
+          "name": "participant"
+        },
+        {
+          "type": "uint256",
+          "name": "submissionTimestamp"
+        }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "hackathonCount",
+      "constant": true,
+      "stateMutability": "view",
+      "payable": false,
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "hackathons",
+      "constant": true,
+      "stateMutability": "view",
+      "payable": false,
+      "inputs": [
+        {
+          "type": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "uint256",
+          "name": "id"
+        },
+        {
+          "type": "string",
+          "name": "name"
+        },
+        {
+          "type": "string",
+          "name": "description"
+        },
+        {
+          "type": "address",
+          "name": "organizer"
+        },
+        {
+          "type": "uint256",
+          "name": "prizePoolWei"
+        },
+        {
+          "type": "uint256",
+          "name": "creationTimestamp"
+        },
+        {
+          "type": "uint256",
+          "name": "registrationDeadline"
+        },
+        {
+          "type": "uint256",
+          "name": "startDate"
+        },
+        {
+          "type": "uint256",
+          "name": "endDate"
+        },
+        {
+          "type": "uint256",
+          "name": "judgePoolBalance"
+        },
+        {
+          "type": "uint256",
+          "name": "organizerBalance"
+        },
+        {
+          "type": "bool",
+          "name": "active"
+        },
+        {
+          "type": "uint256",
+          "name": "projectCount"
+        }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "hackerCoinsToWei",
+      "constant": true,
+      "stateMutability": "pure",
+      "payable": false,
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "hackerCoins"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "isHackathonJudge",
+      "constant": true,
+      "stateMutability": "view",
+      "payable": false,
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "hackathonId"
+        },
+        {
+          "type": "address",
+          "name": "addr"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "isJudge",
+      "constant": true,
+      "stateMutability": "view",
+      "payable": false,
+      "inputs": [
+        {
+          "type": "uint256"
+        },
+        {
+          "type": "address"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "platformBalance",
+      "constant": true,
+      "stateMutability": "view",
+      "payable": false,
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "platformOwner",
+      "constant": true,
+      "stateMutability": "view",
+      "payable": false,
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "address"
+        }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "projects",
+      "constant": true,
+      "stateMutability": "view",
+      "payable": false,
+      "inputs": [
+        {
+          "type": "uint256"
+        },
+        {
+          "type": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "uint256",
+          "name": "id"
+        },
+        {
+          "type": "uint256",
+          "name": "hackathonId"
+        },
+        {
+          "type": "string",
+          "name": "name"
+        },
+        {
+          "type": "string",
+          "name": "description"
+        },
+        {
+          "type": "string",
+          "name": "githubUrl"
+        },
+        {
+          "type": "string",
+          "name": "demoUrl"
+        },
+        {
+          "type": "address",
+          "name": "participant"
+        },
+        {
+          "type": "uint256",
+          "name": "submissionTimestamp"
+        }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "submitProject",
+      "constant": false,
+      "stateMutability": "payable",
+      "payable": true,
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "hackathonId"
+        },
+        {
+          "type": "string",
+          "name": "projectName"
+        },
+        {
+          "type": "string",
+          "name": "projectDescription"
+        },
+        {
+          "type": "string",
+          "name": "githubUrl"
+        },
+        {
+          "type": "string",
+          "name": "demoUrl"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "type": "function",
+      "name": "weiToHackerCoins",
+      "constant": true,
+      "stateMutability": "pure",
+      "payable": false,
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "weiAmount"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "withdrawPlatformFees",
+      "constant": false,
+      "payable": false,
+      "inputs": [],
+      "outputs": []
+    }
+  ]
+}

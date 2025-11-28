@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Sidebar from '../components/Sidebar';
 import TopNav from '../components/TopNav';
+import { useBlockchain } from '../context/BlockchainContext';
 import { Code, Search, Filter, Github, ExternalLink, Tag, Users, Calendar, Trophy } from 'lucide-react';
 
 interface Project {
@@ -19,7 +20,8 @@ interface Project {
   is_public: boolean;
 }
 
-export default function ProjectsPage() {
+export default function ProjectsArchive() {
+  const { isBlockchainMode } = useBlockchain();
   const [projects, setProjects] = useState<Project[]>([]);
   const [filteredProjects, setFilteredProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
@@ -28,7 +30,7 @@ export default function ProjectsPage() {
 
   useEffect(() => {
     fetchProjects();
-  }, []);
+  }, [isBlockchainMode]);
 
   useEffect(() => {
     filterProjects();
@@ -37,12 +39,16 @@ export default function ProjectsPage() {
   const fetchProjects = async () => {
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-      console.log('Fetching projects from:', `${apiUrl}/api/projects`);
-      const res = await fetch(`${apiUrl}/api/projects`);
+      const endpoint = isBlockchainMode ? '/api/blockchain/projects' : '/api/projects';
+      console.log('Blockchain mode:', isBlockchainMode);
+      console.log('Fetching projects from:', `${apiUrl}${endpoint}`);
       
+      const res = await fetch(`${apiUrl}${endpoint}`);
+
       if (res.ok) {
         const data = await res.json();
         console.log('Projects fetched:', data.length, 'projects');
+        console.log('First project sample:', data[0]);
         setProjects(data);
         setFilteredProjects(data);
       } else {
@@ -53,9 +59,7 @@ export default function ProjectsPage() {
     } finally {
       setLoading(false);
     }
-  };
-
-  const filterProjects = () => {
+  };  const filterProjects = () => {
     let filtered = [...projects];
 
     // Search filter

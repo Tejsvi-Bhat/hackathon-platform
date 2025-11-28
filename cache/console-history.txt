@@ -1,0 +1,1 @@
+$env:DATABASE_URL='postgresql://postgres.itcrmiztwztrldvodmjt:postgres@aws-1-ap-southeast-1.pooler.supabase.com:6543/postgres'; psql $env:DATABASE_URL -c "UPDATE hackathons SET blockchain_id = 1 WHERE id = 24;"

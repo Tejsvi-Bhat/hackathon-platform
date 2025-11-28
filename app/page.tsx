@@ -2,9 +2,12 @@
 
 import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import Sidebar from './components/Sidebar';
 import TopNav from './components/TopNav';
 import { ChevronLeft, ChevronRight, Calendar, Users, Trophy, Code, MapPin, Clock, ArrowRight } from 'lucide-react';
+import { useBlockchain } from './context/BlockchainContext';
+import { fetchAllHackathons, BlockchainHackathon } from '@/lib/blockchain-utils';
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic';
@@ -31,6 +34,7 @@ function HomePageContent() {
   const [hackathons, setHackathons] = useState<Hackathon[]>([]);
   const [filteredHackathons, setFilteredHackathons] = useState<Hackathon[]>([]);
   const [featuredIndex, setFeaturedIndex] = useState(0);
+  const { isBlockchainMode } = useBlockchain();
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [loginMode, setLoginMode] = useState<'login' | 'register'>('login');
   const [filters, setFilters] = useState({
@@ -42,7 +46,7 @@ function HomePageContent() {
 
   useEffect(() => {
     fetchHackathons();
-    
+
     // Check URL parameters for login/register triggers
     if (searchParams.get('login') === 'true') {
       setLoginMode('login');
@@ -51,7 +55,7 @@ function HomePageContent() {
       setLoginMode('register');
       setShowLoginModal(true);
     }
-  }, [searchParams]);
+  }, [searchParams, isBlockchainMode]); // Refetch when blockchain mode changes
 
   useEffect(() => {
     applyFilters();
@@ -59,11 +63,70 @@ function HomePageContent() {
 
   const fetchHackathons = async () => {
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-      const response = await fetch(`${apiUrl}/api/hackathons`);
-      const data = await response.json();
-      if (Array.isArray(data)) {
-        setHackathons(data);
+      if (isBlockchainMode) {
+        // Fetch from smart contract
+        const blockchainHackathons = await fetchAllHackathons();
+        
+        // Convert blockchain format to app format
+        const now = new Date();
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+        
+        // Fetch registration counts for each blockchain hackathon
+        const converted = await Promise.all(blockchainHackathons.map(async (bh: BlockchainHackathon) => {
+          const startDate = new Date(bh.startDate * 1000);
+          const endDate = new Date(bh.endDate * 1000);
+          const regDeadline = new Date(bh.registrationDeadline * 1000);
+          
+          // Compute status based on dates
+          let status: 'upcoming' | 'active' | 'completed';
+          if (now < regDeadline) {
+            status = 'upcoming';
+          } else if (now >= startDate && now <= endDate) {
+            status = 'active';
+          } else {
+            status = 'completed';
+          }
+          
+          // Fetch registration count from backend
+          let participantCount = 0;
+          try {
+            const statsResponse = await fetch(`${apiUrl}/api/hackathons/${bh.id}/blockchain-stats`);
+            if (statsResponse.ok) {
+              const stats = await statsResponse.json();
+              participantCount = stats.participant_count;
+            }
+          } catch (err) {
+            console.error('Error fetching stats for hackathon', bh.id, err);
+          }
+          
+          return {
+            id: bh.id,
+            name: bh.name,
+            description: bh.description,
+            start_date: startDate.toISOString(),
+            end_date: endDate.toISOString(),
+            registration_deadline: regDeadline.toISOString(),
+            status: status,
+            ecosystem: 'Blockchain',
+            tech_stack: ['Solidity', 'Ethereum'],
+            level: 'All Levels',
+            mode: 'Online',
+            total_prize_pool: parseFloat(bh.prizePoolHC),
+            participant_count: participantCount,
+            organizer_name: bh.organizer,
+            is_featured: false, // Will be computed in applyFilters
+          };
+        }));
+        
+        setHackathons(converted);
+      } else {
+        // Fetch from database API with blockchain mode preference
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+        const response = await fetch(`${apiUrl}/api/hackathons?mode=blockchain`);
+        const data = await response.json();
+        if (Array.isArray(data)) {
+          setHackathons(data);
+        }
       }
     } catch (error) {
       console.error('Failed to fetch hackathons:', error);
@@ -71,7 +134,19 @@ function HomePageContent() {
   };
 
   const applyFilters = () => {
-    let filtered = [...hackathons];
+    // Auto-feature the most recent upcoming hackathons (top 3 by start date)
+    const upcomingHackathons = hackathons
+      .filter(h => h.status === 'upcoming')
+      .sort((a, b) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime());
+    
+    // Mark top 3 upcoming as featured
+    const featuredIds = new Set(upcomingHackathons.slice(0, 3).map(h => h.id));
+    const hackathonsWithFeatured = hackathons.map(h => ({
+      ...h,
+      is_featured: featuredIds.has(h.id)
+    }));
+    
+    let filtered = [...hackathonsWithFeatured];
 
     if (filters.prizeRange !== 'all') {
       const ranges: { [key: string]: [number, number] } = {
@@ -98,7 +173,8 @@ function HomePageContent() {
     setFilteredHackathons(filtered);
   };
 
-  const featuredHackathons = hackathons.filter(h => h.is_featured && h.status === 'upcoming').slice(0, 3);
+  // Get featured hackathons from filtered list
+  const featuredHackathons = filteredHackathons.filter(h => h.is_featured).slice(0, 3);
 
   const nextFeatured = () => {
     setFeaturedIndex((prev) => (prev + 1) % featuredHackathons.length);
@@ -401,7 +477,9 @@ function HomePageContent() {
                     <div className="flex items-center gap-2">
                       <Trophy className="w-5 h-5 text-yellow-500" />
                       <span className="text-yellow-500 font-bold text-lg">
-                        ${hackathon.total_prize_pool?.toLocaleString()}
+                        {isBlockchainMode 
+                          ? `${hackathon.total_prize_pool} HC`
+                          : `$${hackathon.total_prize_pool?.toLocaleString()}`}
                       </span>
                     </div>
                   </div>
@@ -411,7 +489,9 @@ function HomePageContent() {
                     <div className="text-right">
                       <p className="text-gray-400 text-sm mb-1">Prize Pool</p>
                       <p className="text-white font-bold text-2xl">
-                        ${(hackathon.total_prize_pool / 1000).toFixed(0)}K
+                        {isBlockchainMode 
+                          ? `${hackathon.total_prize_pool} HC`
+                          : `$${(hackathon.total_prize_pool / 1000).toFixed(0)}K`}
                       </p>
                       <p className="text-gray-500 text-xs mt-2">
                         {new Date(hackathon.start_date).toLocaleDateString()} -
@@ -419,13 +499,13 @@ function HomePageContent() {
                       </p>
                     </div>
 
-                    <a
+                    <Link
                       href={`/hackathons/${hackathon.id}`}
                       className="inline-flex items-center gap-2 px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition"
                     >
                       View Details
                       <ArrowRight className="w-4 h-4" />
-                    </a>
+                    </Link>
                   </div>
                 </div>
               </div>

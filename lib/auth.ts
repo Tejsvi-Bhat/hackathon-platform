@@ -4,9 +4,10 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-producti
 
 export interface JWTPayload {
   userId: number;
-  email: string;
-  role: 'organizer' | 'judge' | 'hacker';
-  walletAddress: string;
+  email?: string; // Optional for blockchain users
+  role: 'organizer' | 'judge' | 'hacker' | 'participant';
+  walletAddress?: string;
+  isBlockchainUser?: boolean;
 }
 
 export const generateToken = (payload: JWTPayload): string => {

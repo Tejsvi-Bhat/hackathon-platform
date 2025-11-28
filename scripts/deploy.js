@@ -7,19 +7,19 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 async function main() {
-  console.log("Deploying HackathonPlatform contract...");
+  console.log("Deploying HackerCoinPlatform contract...");
 
-  const HackathonPlatform = await hre.ethers.getContractFactory("HackathonPlatform");
-  const hackathonPlatform = await HackathonPlatform.deploy();
+  const HackerCoinPlatform = await hre.ethers.getContractFactory("HackerCoinPlatform");
+  const hackerCoinPlatform = await HackerCoinPlatform.deploy();
 
-  await hackathonPlatform.deployed();
+  await hackerCoinPlatform.deployed();
 
-  console.log("HackathonPlatform deployed to:", hackathonPlatform.address);
+  console.log("HackerCoinPlatform deployed to:", hackerCoinPlatform.address);
 
   // Save contract address and ABI
   const contractData = {
-    address: hackathonPlatform.address,
-    abi: JSON.parse(hackathonPlatform.interface.format('json'))
+    address: hackerCoinPlatform.address,
+    abi: JSON.parse(hackerCoinPlatform.interface.format('json'))
   };
 
   const contractsDir = path.join(__dirname, "..", "lib", "contracts");
@@ -28,11 +28,11 @@ async function main() {
   }
 
   fs.writeFileSync(
-    path.join(contractsDir, "HackathonPlatform.json"),
+    path.join(contractsDir, "HackerCoinPlatform.json"),
     JSON.stringify(contractData, null, 2)
   );
 
-  console.log("Contract data saved to lib/contracts/HackathonPlatform.json");
+  console.log("Contract data saved to lib/contracts/HackerCoinPlatform.json");
 }
 
 main()

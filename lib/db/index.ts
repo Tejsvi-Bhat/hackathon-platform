@@ -1,30 +1,20 @@
-﻿import { Pool } from 'pg';
-import { config } from '../config.js';
+import { Pool } from 'pg';
 
-// Use connection string if DATABASE_URL is provided, otherwise use individual params
-const connectionConfig = process.env.DATABASE_URL
-  ? {
-      connectionString: process.env.DATABASE_URL,
-      ssl: {
-        rejectUnauthorized: false
-      }
-    }
-  : {
-      host: config.db.host,
-      port: config.db.port,
-      database: config.db.database,
-      user: config.db.user,
-      password: config.db.password,
-      ssl: config.db.host.includes('supabase.co') ? {
-        rejectUnauthorized: false
-      } : undefined
-    };
+// Get database URL from environment
+const connectionString = process.env.DATABASE_URL;
 
 const pool = new Pool({
-  ...connectionConfig,
-  max: 20,
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 2000,
+  connectionString: connectionString || undefined,
+  ssl: connectionString ? { rejectUnauthorized: false } : undefined, // Required for Supabase
+});
+
+// Test connection
+pool.on('connect', () => {
+  console.log('✓ Database connected');
+});
+
+pool.on('error', (err) => {
+  console.error('Database connection error:', err);
 });
 
 export default pool;

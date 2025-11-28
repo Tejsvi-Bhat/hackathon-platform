@@ -5,9 +5,10 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Sidebar from '../../components/Sidebar';
 import TopNav from '../../components/TopNav';
-import { 
-  Code, 
-  ExternalLink, 
+import { useBlockchain } from '../../context/BlockchainContext';
+import {
+  Code,
+  ExternalLink,
   Github, 
   Users, 
   Calendar, 
@@ -66,7 +67,10 @@ interface User {
 export default function ProjectDetail() {
   const params = useParams();
   const router = useRouter();
+  const { isBlockchainMode, walletAddress, isMounted } = useBlockchain();
   const projectId = params.id as string;
+
+  console.log('Project page - Blockchain mode:', isBlockchainMode, 'Wallet:', walletAddress, 'Mounted:', isMounted);
 
   const [project, setProject] = useState<Project | null>(null);
   const [user, setUser] = useState<User | null>(null);
@@ -93,19 +97,26 @@ export default function ProjectDetail() {
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
   useEffect(() => {
-    fetchProjectData();
-  }, [projectId]);
+    if (isMounted) {
+      fetchProjectData();
+    }
+  }, [projectId, isBlockchainMode, isMounted]); // Wait for context to be mounted
+
+  useEffect(() => {
+    console.log('Blockchain mode changed to:', isBlockchainMode);
+  }, [isBlockchainMode]);
 
   const fetchProjectData = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('token');
-      
+      const token = localStorage.getItem('token') || localStorage.getItem('blockchainToken');
+
       let userData = null;
-      
+
       // Fetch user data first
       if (token) {
-        const userRes = await fetch(`${apiUrl}/api/users/me`, {
+        const userEndpoint = isBlockchainMode ? '/api/blockchain-auth/me' : '/api/users/me';
+        const userRes = await fetch(`${apiUrl}${userEndpoint}`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         if (userRes.ok) {
@@ -115,7 +126,14 @@ export default function ProjectDetail() {
       }
 
       // Fetch project data
-      const projectRes = await fetch(`${apiUrl}/api/projects/${projectId}`, {
+      const projectEndpoint = isBlockchainMode ? 
+        `/api/blockchain/projects/${projectId}` : 
+        `/api/projects/${projectId}`;
+      
+      console.log('Fetching from endpoint:', `${apiUrl}${projectEndpoint}`);
+      console.log('Blockchain mode:', isBlockchainMode);
+      
+      const projectRes = await fetch(`${apiUrl}${projectEndpoint}`, {
         headers: token ? { 'Authorization': `Bearer ${token}` } : {}
       });
 
@@ -124,6 +142,8 @@ export default function ProjectDetail() {
       }
 
       const projectData = await projectRes.json();
+      console.log('Fetched project data:', projectData);
+      console.log('Team members:', projectData.team_members);
       setProject(projectData);
 
       // Check if user is creator/team member
@@ -495,7 +515,9 @@ export default function ProjectDetail() {
                   )}
                 </div>
                 <div className="space-y-3">
-                  {project.team_members?.map((member) => (
+                  {project.team_members?.map((member) => {
+                    console.log('Rendering member:', member);
+                    return (
                     <div
                       key={member.id}
                       className="flex items-center gap-3 p-3 bg-gray-800 rounded-lg"
@@ -510,7 +532,7 @@ export default function ProjectDetail() {
                         )}
                       </div>
                     </div>
-                  ))}
+                  )})}
                 </div>
               </div>
             </div>

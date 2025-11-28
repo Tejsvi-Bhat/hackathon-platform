@@ -8,11 +8,11 @@
       "solcConfig": {
         "version": "0.8.20",
         "settings": {
-          "evmVersion": "paris",
           "optimizer": {
-            "enabled": false,
+            "enabled": true,
             "runs": 200
           },
+          "evmVersion": "paris",
           "outputSelection": {
             "*": {
               "*": [
@@ -35,6 +35,42 @@
       ],
       "artifacts": [
         "HackathonPlatform"
+      ]
+    },
+    "C:\\Users\\namanbhat\\hackathon-platform\\contracts\\HackerCoinPlatform.sol": {
+      "lastModificationDate": 1764336215023,
+      "contentHash": "d551355a5ae7aa9de58a9d6245a10834",
+      "sourceName": "contracts/HackerCoinPlatform.sol",
+      "solcConfig": {
+        "version": "0.8.20",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "^0.8.20"
+      ],
+      "artifacts": [
+        "HackerCoinPlatform"
       ]
     }
   }

@@ -1,11 +1,14 @@
 'use client';
 
-import { Search, Bell, User, LogOut } from 'lucide-react';
+import { Search, Bell, User, LogOut, Wallet, Copy, Check, RefreshCw } from 'lucide-react';
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import LoginModal from './LoginModal';
+import WalletAuthModal from './WalletAuthModal';
 import ConfirmDialog from './ConfirmDialog';
+import { getWalletBalance, formatBalance, getNetworkSymbol } from '@/lib/web3-client';
+import { useBlockchain } from '@/app/context/BlockchainContext';
 
 interface TopNavProps {
   onOpenLogin?: () => void;
@@ -20,28 +23,87 @@ export default function TopNav({ onOpenLogin, showLoginModal: externalShowModal,
   const [internalShowModal, setInternalShowModal] = useState(false);
   const [currentMode, setCurrentMode] = useState<'login' | 'register'>(initialLoginMode);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [copiedWallet, setCopiedWallet] = useState(false);
+  const [walletBalance, setWalletBalance] = useState<string>('0');
+  const [loadingBalance, setLoadingBalance] = useState(false);
+  const [network] = useState<'sepolia' | 'mumbai'>('sepolia');
   const router = useRouter();
-
+  
+  // Blockchain context
+  const { isBlockchainMode, walletAddress, balanceInHC, balance, isConnecting, connectWallet, disconnectWallet } = useBlockchain();
+  
   const showLoginModal = externalShowModal !== undefined ? externalShowModal : internalShowModal;
-  const setShowLoginModal = onCloseLoginModal 
+  const setShowLoginModal = onCloseLoginModal
     ? (value: boolean) => { if (!value) onCloseLoginModal(); }
     : setInternalShowModal;
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-      fetch(`${apiUrl}/api/auth/me`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      })
-        .then(res => res.json())
-        .then(data => setUser(data))
-        .catch(() => localStorage.removeItem('token'));
+    if (isBlockchainMode) {
+      // In blockchain mode, fetch user from backend based on wallet
+      if (walletAddress) {
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+        fetch(`${apiUrl}/api/blockchain-auth/verify/${walletAddress}`)
+          .then(res => res.json())
+          .then(data => {
+            if (data.registered && data.user) {
+              setUser(data.user);
+            } else {
+              setUser(null);
+            }
+          })
+          .catch(() => setUser(null));
+      } else {
+        setUser(null);
+      }
+    } else {
+      // In database mode, check for token auth
+      const token = localStorage.getItem('token');
+      if (token) {
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+        fetch(`${apiUrl}/api/auth/me`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        })
+          .then(res => res.json())
+          .then(data => {
+            setUser(data);
+            if (data.wallet_address) {
+              fetchWalletBalance(data.wallet_address);
+            }
+          })
+          .catch(() => localStorage.removeItem('token'));
+      } else {
+        setUser(null);
+      }
     }
-  }, []);
+  }, [isBlockchainMode, walletAddress]);
+
+  const fetchWalletBalance = async (address: string) => {
+    try {
+      setLoadingBalance(true);
+      const balance = await getWalletBalance(address, network);
+      setWalletBalance(balance);
+    } catch (error) {
+      console.error('Error fetching balance:', error);
+      setWalletBalance('0');
+    } finally {
+      setLoadingBalance(false);
+    }
+  };
+
+  const refreshBalance = () => {
+    if (user?.wallet_address) {
+      fetchWalletBalance(user.wallet_address);
+    }
+  };
 
   const handleLogout = () => {
-    localStorage.removeItem('token');
+    if (isBlockchainMode) {
+      // In blockchain mode, just disconnect wallet
+      localStorage.removeItem('blockchainToken');
+      disconnectWallet();
+    } else {
+      localStorage.removeItem('token');
+    }
     setUser(null);
     setShowLogoutConfirm(false);
     router.push('/');
@@ -51,17 +113,37 @@ export default function TopNav({ onOpenLogin, showLoginModal: externalShowModal,
     setShowLogoutConfirm(true);
   };
 
+  const copyWalletAddress = () => {
+    if (user?.wallet_address) {
+      navigator.clipboard.writeText(user.wallet_address);
+      setCopiedWallet(true);
+      setTimeout(() => setCopiedWallet(false), 2000);
+    }
+  };
+
+  const truncateAddress = (address: string) => {
+    if (!address) return '';
+    return `${address.slice(0, 6)}...${address.slice(-4)}`;
+  };
+
   const handleLoginSuccess = () => {
     // Refresh user data after login
-    const token = localStorage.getItem('token');
-    if (token) {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-      fetch(`${apiUrl}/api/auth/me`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      })
-        .then(res => res.json())
-        .then(data => setUser(data))
-        .catch(() => localStorage.removeItem('token'));
+    if (isBlockchainMode) {
+      const walletAuth = localStorage.getItem('blockchainUser');
+      if (walletAuth) {
+        setUser(JSON.parse(walletAuth));
+      }
+    } else {
+      const token = localStorage.getItem('token');
+      if (token) {
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+        fetch(`${apiUrl}/api/auth/me`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        })
+          .then(res => res.json())
+          .then(data => setUser(data))
+          .catch(() => localStorage.removeItem('token'));
+      }
     }
   };
 
@@ -89,8 +171,124 @@ export default function TopNav({ onOpenLogin, showLoginModal: externalShowModal,
 
         {/* Right Section */}
         <div className="flex items-center gap-4">
+          {/* Blockchain Mode Wallet Display */}
+          {isBlockchainMode && (
+            <div className="flex items-center gap-3 px-4 py-2 bg-gradient-to-r from-blue-900/50 to-purple-900/50 border border-blue-500/50 rounded-lg">
+              {walletAddress ? (
+                <>
+                  {/* User Info */}
+                  {user && (
+                    <div className="flex flex-col border-r border-blue-500/30 pr-3">
+                      <span className="text-xs text-gray-400">User</span>
+                      <span className="text-sm font-semibold text-white">
+                        {user.full_name || 'Anonymous'}
+                      </span>
+                      <span className="text-xs text-blue-300 capitalize">
+                        {user.role}
+                      </span>
+                    </div>
+                  )}
+                  
+                  {/* Balance */}
+                  <Wallet className="w-5 h-5 text-blue-400" />
+                  <div className="flex flex-col">
+                    <span className="text-xs text-gray-400">Balance</span>
+                    <span className="text-sm font-semibold text-white">
+                      {balanceInHC} HC
+                    </span>
+                  </div>
+                  
+                  {/* Wallet Address */}
+                  <div className="ml-2 border-l border-blue-500/30 pl-3">
+                    <span className="text-xs text-gray-400">Wallet</span>
+                    <div className="flex items-center gap-1">
+                      <code className="text-sm font-mono text-blue-300">
+                        {walletAddress.slice(0, 6)}...{walletAddress.slice(-4)}
+                      </code>
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText(walletAddress);
+                          setCopiedWallet(true);
+                          setTimeout(() => setCopiedWallet(false), 2000);
+                        }}
+                        className="p-1 hover:bg-blue-800/50 rounded transition"
+                      >
+                        {copiedWallet ? (
+                          <Check className="w-3 h-3 text-green-400" />
+                        ) : (
+                          <Copy className="w-3 h-3 text-gray-400" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <button
+                  onClick={connectWallet}
+                  disabled={isConnecting}
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Wallet className="w-4 h-4" />
+                  {isConnecting ? 'Connecting...' : 'Connect MetaMask'}
+                </button>
+              )}
+            </div>
+          )}
+
           {user ? (
             <>
+              {/* Only show duplicate wallet info if NOT in blockchain mode */}
+              {!isBlockchainMode && user.wallet_address && (
+                <div className="hidden md:flex items-center gap-2">
+                  {/* Balance Display */}
+                  <div className="flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-blue-900/50 to-purple-900/50 border border-blue-500/30 rounded-lg">
+                    <Wallet className="w-4 h-4 text-blue-400" />
+                    <div className="flex flex-col">
+                      <span className="text-xs text-gray-400">Balance</span>
+                      <span className="text-sm font-semibold text-white">
+                        {loadingBalance ? '...' : `${formatBalance(walletBalance)} ${getNetworkSymbol(network)}`}
+                      </span>
+                    </div>
+                    <button
+                      onClick={refreshBalance}
+                      className={`ml-1 p-1 hover:bg-blue-800/50 rounded transition ${loadingBalance ? 'animate-spin' : ''}`}
+                      title="Refresh balance"
+                    >
+                      <RefreshCw className="w-3.5 h-3.5 text-blue-400" />
+                    </button>
+                  </div>
+                  
+                  {/* Wallet Address */}
+                  <div className="flex items-center gap-2 px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg">
+                    <span className="text-sm font-mono text-gray-300">
+                      {truncateAddress(user.wallet_address)}
+                    </span>
+                    <button
+                      onClick={copyWalletAddress}
+                      className="p-1 hover:bg-gray-700 rounded transition"
+                      title="Copy wallet address"
+                    >
+                      {copiedWallet ? (
+                        <Check className="w-3.5 h-3.5 text-green-400" />
+                      ) : (
+                        <Copy className="w-3.5 h-3.5 text-gray-400" />
+                      )}
+                    </button>
+                  </div>
+                  
+                  <a
+                    href="https://sepoliafaucet.com"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-lg transition flex items-center gap-1.5"
+                    title="Get test ETH"
+                  >
+                    <Wallet className="w-3.5 h-3.5" />
+                    Faucet
+                  </a>
+                </div>
+              )}
+
               {/* Notifications */}
               <button className="relative p-2 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg transition">
                 <Bell className="w-5 h-5" />
@@ -110,7 +308,47 @@ export default function TopNav({ onOpenLogin, showLoginModal: externalShowModal,
                 </button>
 
                 {/* Dropdown Menu */}
-                <div className="absolute right-0 mt-2 w-48 bg-gray-800 rounded-lg shadow-lg border border-gray-700 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all">
+                <div className="absolute right-0 mt-2 w-64 bg-gray-800 rounded-lg shadow-lg border border-gray-700 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all">
+                  {/* Wallet Info in Dropdown */}
+                  {user.wallet_address && (
+                    <div className="px-4 py-3 border-b border-gray-700">
+                      <p className="text-xs text-gray-400 mb-2">Wallet Address</p>
+                      <div className="flex items-center gap-2 mb-3">
+                        <Wallet className="w-3.5 h-3.5 text-blue-400" />
+                        <code className="text-xs font-mono text-gray-300 flex-1">
+                          {truncateAddress(user.wallet_address)}
+                        </code>
+                        <button
+                          onClick={copyWalletAddress}
+                          className="p-1 hover:bg-gray-700 rounded transition"
+                        >
+                          {copiedWallet ? (
+                            <Check className="w-3.5 h-3.5 text-green-400" />
+                          ) : (
+                            <Copy className="w-3.5 h-3.5 text-gray-400" />
+                          )}
+                        </button>
+                      </div>
+                      <div className="flex gap-2">
+                        <a
+                          href="https://sepoliafaucet.com"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex-1 px-2 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded transition text-center"
+                        >
+                          Sepolia Faucet
+                        </a>
+                        <a
+                          href="https://faucet.polygon.technology"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex-1 px-2 py-1.5 bg-purple-600 hover:bg-purple-700 text-white text-xs font-medium rounded transition text-center"
+                        >
+                          Mumbai Faucet
+                        </a>
+                      </div>
+                    </div>
+                  )}
                   <Link
                     href="/dashboard"
                     className="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 rounded-t-lg transition"
@@ -123,6 +361,21 @@ export default function TopNav({ onOpenLogin, showLoginModal: externalShowModal,
                   >
                     Profile Settings
                   </Link>
+                  {isBlockchainMode && (
+                    <button
+                      onClick={() => {
+                        // Disconnect and reconnect to show account selection
+                        disconnectWallet();
+                        setTimeout(() => {
+                          connectWallet();
+                        }, 100);
+                      }}
+                      className="w-full text-left px-4 py-2 text-sm text-blue-400 hover:bg-gray-700 transition flex items-center gap-2"
+                    >
+                      <Wallet className="w-4 h-4" />
+                      Switch Account
+                    </button>
+                  )}
                   <button
                     onClick={confirmLogout}
                     className="w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-gray-700 rounded-b-lg transition flex items-center gap-2"
@@ -167,12 +420,20 @@ export default function TopNav({ onOpenLogin, showLoginModal: externalShowModal,
       </div>
 
       {/* Login Modal */}
-      <LoginModal
-        isOpen={showLoginModal}
-        onClose={() => setShowLoginModal(false)}
-        onLoginSuccess={handleLoginSuccess}
-        initialMode={currentMode}
-      />
+      {isBlockchainMode ? (
+        <WalletAuthModal
+          isOpen={showLoginModal}
+          onClose={() => setShowLoginModal(false)}
+          onAuthSuccess={handleLoginSuccess}
+        />
+      ) : (
+        <LoginModal
+          isOpen={showLoginModal}
+          onClose={() => setShowLoginModal(false)}
+          onLoginSuccess={handleLoginSuccess}
+          initialMode={currentMode}
+        />
+      )}
 
       {/* Logout Confirmation Dialog */}
       <ConfirmDialog

@@ -5,6 +5,8 @@ import { useParams, useRouter } from 'next/navigation';
 import Sidebar from '../../components/Sidebar';
 import TopNav from '../../components/TopNav';
 import ConfirmDialog from '../../components/ConfirmDialog';
+import { useBlockchain } from '../../context/BlockchainContext';
+import { fetchHackathonById, fetchProjectsForHackathon } from '@/lib/blockchain-utils';
 import { 
   ArrowLeft, Share2, Calendar, Code, Trophy, MapPin, 
   Clock, Users, Heart, ExternalLink, Award, Target, CheckCircle2
@@ -72,6 +74,7 @@ interface LeaderboardEntry {
 
 interface Hackathon {
   id: number;
+  blockchain_id?: number;
   name: string;
   description: string;
   start_date: string;
@@ -95,6 +98,7 @@ interface Hackathon {
 export default function HackathonDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const { isBlockchainMode, walletAddress } = useBlockchain();
   const [hackathon, setHackathon] = useState<Hackathon | null>(null);
   const [loading, setLoading] = useState(true);
   const [isRegistered, setIsRegistered] = useState(false);
@@ -103,11 +107,22 @@ export default function HackathonDetailPage() {
   const [showRegisterConfirm, setShowRegisterConfirm] = useState(false);
   const [showShareSuccess, setShowShareSuccess] = useState(false);
   const [registering, setRegistering] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [showProjectSelector, setShowProjectSelector] = useState(false);
+  const [userProjects, setUserProjects] = useState<any[]>([]);
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
+  const [submittedProjects, setSubmittedProjects] = useState<Set<number>>(new Set());
+  const [showSubmissionModal, setShowSubmissionModal] = useState(false);
+  const [submissionStatus, setSubmissionStatus] = useState<{
+    type: 'loading' | 'success' | 'error';
+    message: string;
+    details?: string;
+  } | null>(null);
 
   useEffect(() => {
     fetchHackathonDetails();
-  }, [params.id]);
+    checkRegistrationStatus();
+  }, [params.id, isBlockchainMode]);
 
   useEffect(() => {
     if (!hackathon) return;
@@ -135,25 +150,71 @@ export default function HackathonDetailPage() {
     return () => clearInterval(timer);
   }, [hackathon]);
 
-  const fetchHackathonDetails = async () => {
+  const checkRegistrationStatus = async () => {
+    const token = isBlockchainMode 
+      ? localStorage.getItem('blockchainToken') 
+      : localStorage.getItem('token');
+    
+    if (!token) {
+      return;
+    }
+
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-      const response = await fetch(`${apiUrl}/api/hackathons/${params.id}`);
-      if (!response.ok) throw new Error('Failed to fetch');
-      const data = await response.json();
-      setHackathon(data);
+      const response = await fetch(`${apiUrl}/api/hackathons/${params.id}/check-registration`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
 
-      const token = localStorage.getItem('token');
+      if (response.ok) {
+        const data = await response.json();
+        setIsRegistered(data.isRegistered);
+        console.log('Registration status:', data.isRegistered);
+      }
+    } catch (err) {
+      console.error('Error checking registration:', err);
+    }
+  };
+
+  const fetchHackathonDetails = async () => {
+    setLoading(true);
+    try {
+      // Use API endpoint with blockchain mode instead of direct blockchain calls
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+      const response = await fetch(`${apiUrl}/api/hackathons/${params.id}?mode=blockchain`);
+      
+      if (!response.ok) {
+        if (response.status === 404) {
+          console.error('Hackathon not found');
+          setLoading(false);
+          return;
+        }
+        throw new Error('Failed to fetch hackathon');
+      }
+      
+      const data = await response.json();
+      console.log('Hackathon data received:', data);
+      
+      // Set the hackathon data directly from the API
+      setHackathon(data);
+      
+      // Check registration status if user is authenticated
+      const token = localStorage.getItem('token') || localStorage.getItem('blockchainToken');
       if (token) {
-        const regResponse = await fetch(`${apiUrl}/api/hackathons/${params.id}/check-registration`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        if (regResponse.ok) {
-          const regData = await regResponse.json();
-          setIsRegistered(regData.isRegistered);
+        try {
+          const regResponse = await fetch(`${apiUrl}/api/hackathons/${params.id}/check-registration`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          if (regResponse.ok) {
+            const regData = await regResponse.json();
+            setIsRegistered(regData.isRegistered);
+          }
+        } catch (regError) {
+          console.log('Could not check registration status:', regError);
         }
       }
-
+      
       // Fetch leaderboard if hackathon is completed
       if (data.status === 'completed') {
         const leaderboardResponse = await fetch(`${apiUrl}/api/hackathons/${params.id}/leaderboard`);
@@ -162,16 +223,23 @@ export default function HackathonDetailPage() {
           setLeaderboard(leaderboardData);
         }
       }
+      
+      setLoading(false);
     } catch (err) {
-      console.error(err);
-    } finally {
+      console.error('Error fetching hackathon details:', err);
       setLoading(false);
     }
   };
 
   const handleRegister = async () => {
-    const token = localStorage.getItem('token');
+    // Get the correct token based on mode
+    const token = isBlockchainMode 
+      ? localStorage.getItem('blockchainToken') 
+      : localStorage.getItem('token');
+    
     if (!token) {
+      console.error('No authentication token found');
+      alert('Please login first');
       router.push('/?login=true');
       return;
     }
@@ -179,25 +247,66 @@ export default function HackathonDetailPage() {
     setRegistering(true);
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+      
+      console.log('Registering for hackathon:', params.id);
+      console.log('Using blockchain mode:', isBlockchainMode);
+      console.log('Wallet address:', walletAddress);
+      console.log('Token:', token ? 'Present' : 'Missing');
+      
       const response = await fetch(`${apiUrl}/api/hackathons/${params.id}/register`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
-        }
+        },
+        body: JSON.stringify({
+          walletAddress: walletAddress
+        })
       });
 
+      console.log('Response status:', response.status);
+      console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+
+      let data;
+      try {
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          data = await response.json();
+        } else {
+          const text = await response.text();
+          console.error('Non-JSON response:', text);
+          data = { error: 'Server returned non-JSON response: ' + text.substring(0, 100) };
+        }
+      } catch (parseError: any) {
+        console.error('Error parsing response:', parseError);
+        const text = await response.text().catch(() => 'Unable to read response');
+        data = { error: 'Failed to parse response: ' + parseError.message };
+      }
+
+      console.log('Registration response data:', data);
+
       if (response.ok) {
+        console.log('Registration successful!');
         setIsRegistered(true);
         setShowRegisterConfirm(false);
+        alert('Successfully registered for hackathon!');
         // Show success notification
         setTimeout(() => {
           setShowShareSuccess(true);
           setTimeout(() => setShowShareSuccess(false), 3000);
         }, 300);
+      } else {
+        console.error('Registration failed:', data);
+        if (data.error === 'Already registered') {
+          alert('You are already registered for this hackathon');
+          setIsRegistered(true);
+        } else {
+          alert(`Registration failed: ${data.error || 'Unknown error'}`);
+        }
       }
-    } catch (err) {
-      console.error('Registration failed:', err);
+    } catch (err: any) {
+      console.error('Registration error:', err);
+      alert(`Registration failed: ${err.message || 'Network error. Please check if the server is running.'}`);
     } finally {
       setRegistering(false);
     }
@@ -205,6 +314,200 @@ export default function HackathonDetailPage() {
 
   const confirmRegister = () => {
     setShowRegisterConfirm(true);
+  };
+
+  const handleSubmitProject = async (projectId: number) => {
+    if (!isBlockchainMode) {
+      setSubmissionStatus({
+        type: 'error',
+        message: 'Blockchain mode required',
+        details: 'Project submission is only available in blockchain mode'
+      });
+      setShowSubmissionModal(true);
+      return;
+    }
+
+    if (submittedProjects.has(projectId)) {
+      setSubmissionStatus({
+        type: 'error',
+        message: 'Already submitted',
+        details: 'This project has already been submitted to the blockchain'
+      });
+      setShowSubmissionModal(true);
+      return;
+    }
+
+    const token = localStorage.getItem('blockchainToken');
+    if (!token) {
+      setSubmissionStatus({
+        type: 'error',
+        message: 'Authentication required',
+        details: 'Please login with your wallet first'
+      });
+      setShowSubmissionModal(true);
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const { ethers } = await import('ethers');
+      const provider = new ethers.providers.Web3Provider(window.ethereum);
+      const signer = await provider.getSigner();
+
+      const contractAddress = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS;
+      const abi = [
+        'function submitProject(uint256 hackathonId, string memory name, string memory description, string memory githubUrl, string memory demoUrl) external payable'
+      ];
+
+      const contract = new ethers.Contract(contractAddress!, abi, signer);
+
+      // Get project details
+      const project = userProjects.find(p => p.id === projectId);
+      if (!project) {
+        setSubmissionStatus({
+          type: 'error',
+          message: 'Project not found',
+          details: 'The selected project could not be found'
+        });
+        setShowSubmissionModal(true);
+        return;
+      }
+
+      console.log('Project object:', project);
+
+      // Ensure all string parameters are defined
+      const projectName = project.title || project.name || 'Untitled Project';
+      const projectDescription = project.description || 'No description provided';
+      const projectGithubUrl = project.github_url || '';
+      const projectDemoUrl = project.demo_url || '';
+
+      if (!projectName.trim()) {
+        setSubmissionStatus({
+          type: 'error',
+          message: 'Project name required',
+          details: 'Please add a name to your project before submitting'
+        });
+        setShowSubmissionModal(true);
+        return;
+      }
+
+      // Check if hackathon has blockchain ID
+      console.log('Hackathon object:', hackathon);
+      
+      if (!hackathon) {
+        setSubmissionStatus({
+          type: 'error',
+          message: 'Hackathon data not loaded',
+          details: 'Please refresh the page and try again'
+        });
+        setShowSubmissionModal(true);
+        return;
+      }
+      
+      let blockchainHackathonId;
+      if (isBlockchainMode) {
+        // In blockchain mode, the hackathon.id IS the blockchain ID
+        blockchainHackathonId = hackathon.id;
+        console.log('Blockchain mode - using hackathon.id:', blockchainHackathonId);
+      } else {
+        // In database mode, need blockchain_id field
+        blockchainHackathonId = hackathon.blockchain_id;
+        console.log('Database mode - using blockchain_id:', blockchainHackathonId);
+      }
+      
+      if (!blockchainHackathonId) {
+        setSubmissionStatus({
+          type: 'error',
+          message: 'Hackathon not available',
+          details: 'This hackathon is not available for blockchain submission'
+        });
+        setShowSubmissionModal(true);
+        return;
+      }
+
+      // 1 HC = 1,000,000 wei
+      const submissionFee = ethers.utils.parseUnits('1', 6);
+
+      // Show loading modal
+      setSubmissionStatus({
+        type: 'loading',
+        message: 'Confirm transaction in MetaMask',
+        details: 'Submission fee: 1 HC'
+      });
+      setShowSubmissionModal(true);
+
+      console.log('Contract call parameters:');
+      console.log('  hackathonId:', blockchainHackathonId);
+      console.log('  name:', projectName);
+      console.log('  description:', projectDescription);
+      console.log('  githubUrl:', projectGithubUrl);
+      console.log('  demoUrl:', projectDemoUrl);
+      console.log('  value:', submissionFee.toString());
+
+      const tx = await contract.submitProject(
+        blockchainHackathonId,
+        projectName,
+        projectDescription,
+        projectGithubUrl,
+        projectDemoUrl,
+        { value: submissionFee }
+      );
+
+      setSubmissionStatus({
+        type: 'loading',
+        message: 'Transaction submitted!',
+        details: 'Waiting for blockchain confirmation...'
+      });
+
+      await tx.wait();
+
+      setSubmissionStatus({
+        type: 'success',
+        message: 'Project submitted successfully!',
+        details: 'Your project is now on the blockchain'
+      });
+
+      // Mark project as submitted
+      setSubmittedProjects(prev => new Set([...prev, projectId]));
+      
+      // Close modal after 3 seconds
+      setTimeout(() => {
+        setShowSubmissionModal(false);
+        setShowProjectSelector(false);
+      }, 3000);
+    } catch (error: any) {
+      console.error('Submission error:', error);
+      setSubmissionStatus({
+        type: 'error',
+        message: 'Submission failed',
+        details: error.message || 'Please try again'
+      });
+      setShowSubmissionModal(true);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const openProjectSelector = async () => {
+    const token = localStorage.getItem('blockchainToken');
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+
+    try {
+      const response = await fetch(`${apiUrl}/api/users/me/projects`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      
+      if (response.ok) {
+        const projects = await response.json();
+        setUserProjects(projects);
+        setShowProjectSelector(true);
+      } else {
+        alert('Failed to load your projects');
+      }
+    } catch (error) {
+      console.error('Error fetching projects:', error);
+      alert('Failed to load projects');
+    }
   };
 
   const handleShare = () => {
@@ -321,10 +624,32 @@ export default function HackathonDetailPage() {
                     <Trophy className="w-12 h-12 text-yellow-500 mx-auto mb-4" />
                     <h2 className="text-2xl font-bold text-white mb-2">Total Prize Pool</h2>
                     <div className="text-5xl font-bold text-yellow-500 mb-2">
-                      ${hackathon.total_prize_pool?.toLocaleString()}
+                      {isBlockchainMode ? `${hackathon.total_prize_pool?.toLocaleString()} HC` : `$${hackathon.total_prize_pool?.toLocaleString()}`}
                     </div>
                     <p className="text-gray-400">{hackathon.prizes?.length || 0} prize categories available</p>
                   </div>
+
+                  {/* Blockchain Mode Notice */}
+                  {isBlockchainMode && hackathon.prizes?.length === 0 && (
+                    <div className="bg-blue-900/20 border border-blue-800/50 rounded-xl p-6">
+                      <div className="flex items-start gap-3">
+                        <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center flex-shrink-0 mt-1">
+                          <Trophy className="w-4 h-4 text-white" />
+                        </div>
+                        <div>
+                          <h3 className="text-lg font-semibold text-white mb-2">Blockchain Hackathon Prizes</h3>
+                          <p className="text-gray-300 mb-3">
+                            This is a blockchain-based hackathon. Prize details were set when the hackathon was created on the blockchain.
+                            The total prize pool of <span className="font-bold text-yellow-500">{hackathon.total_prize_pool} HC</span> will be distributed to winners by the organizer.
+                          </p>
+                          <p className="text-gray-400 text-sm">
+                            Individual prize breakdowns are stored in the smart contract but cannot be retrieved after creation.
+                            The organizer will distribute prizes according to the predefined criteria.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
                   {hackathon.prizes?.map((prize) => (
                     <div key={prize.id} className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
@@ -336,7 +661,9 @@ export default function HackathonDetailPage() {
                           </div>
                           <div className="text-right">
                             <Trophy className="w-8 h-8 text-yellow-500 mb-2 ml-auto" />
-                            <div className="text-3xl font-bold text-yellow-500">${prize.amount.toLocaleString()}</div>
+                            <div className="text-3xl font-bold text-yellow-500">
+                              {isBlockchainMode ? `${prize.amount} HC` : `$${prize.amount.toLocaleString()}`}
+                            </div>
                             <div className="text-sm text-gray-400">Position #{prize.position}</div>
                             <div className="text-xs text-gray-500 mt-1">1 Winner</div>
                           </div>
@@ -642,8 +969,12 @@ export default function HackathonDetailPage() {
                   )}
                   
                   {isRegistered && !hackathonEnded && (
-                    <button className="w-full py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold transition">
-                      Submit Project
+                    <button 
+                      onClick={openProjectSelector}
+                      disabled={submitting}
+                      className="w-full py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {submitting ? 'Submitting...' : 'Submit Project (1 HC)'}
                     </button>
                   )}
                   
@@ -690,10 +1021,12 @@ export default function HackathonDetailPage() {
                       <Trophy className="w-5 h-5" />
                       <span>Prize Pool</span>
                     </div>
-                    <span className="text-yellow-500 font-bold">${hackathon.total_prize_pool?.toLocaleString()}</span>
+                    <span className="text-yellow-500 font-bold">
+                      {isBlockchainMode ? `${hackathon.total_prize_pool?.toLocaleString()} HC` : `$${hackathon.total_prize_pool?.toLocaleString()}`}
+                    </span>
                   </div>
 
-                  <div className="flex items-center justify-between py-3">
+                  <div className="flex items-center justify-between py-3 border-b border-gray-800">
                     <div className="flex items-center gap-2 text-gray-400">
                       <MapPin className="w-5 h-5" />
                       <span>Location</span>
@@ -759,6 +1092,130 @@ export default function HackathonDetailPage() {
               <p className="text-gray-400 text-sm">
                 {isRegistered ? 'Successfully registered for hackathon' : 'Link copied to clipboard'}
               </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Project Selector Modal */}
+      {showProjectSelector && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-2xl max-h-[80vh] overflow-y-auto">
+            <div className="sticky top-0 bg-gray-900 border-b border-gray-800 p-6 flex items-center justify-between">
+              <h2 className="text-2xl font-bold text-white">Select Project to Submit</h2>
+              <button 
+                onClick={() => setShowProjectSelector(false)}
+                className="text-gray-400 hover:text-white transition"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              {userProjects.length === 0 ? (
+                <p className="text-gray-400 text-center py-8">
+                  No projects found. Create a project first in your dashboard.
+                </p>
+              ) : (
+                userProjects.map((project) => {
+                  const isSubmitted = submittedProjects.has(project.id);
+                  return (
+                    <div 
+                      key={project.id}
+                      className={`p-4 bg-gray-800/50 border rounded-lg transition ${
+                        isSubmitted 
+                          ? 'border-green-500 bg-green-500/10' 
+                          : 'border-gray-700 hover:border-purple-500 cursor-pointer'
+                      }`}
+                      onClick={!isSubmitted ? () => handleSubmitProject(project.id) : undefined}
+                    >
+                      <h3 className="font-semibold text-white mb-2">{project.title || project.name}</h3>
+                      <p className="text-sm text-gray-400 mb-3 line-clamp-2">{project.description}</p>
+                      <div className="flex items-center gap-4 text-xs text-gray-500">
+                        {project.github_url && (
+                          <span className="flex items-center gap-1">
+                            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                              <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+                            </svg>
+                            GitHub
+                          </span>
+                        )}
+                        {project.demo_url && (
+                          <span className="flex items-center gap-1">
+                            🔗 Demo
+                          </span>
+                        )}
+                      </div>
+                      <div className="mt-3 pt-3 border-t border-gray-700">
+                        {isSubmitted ? (
+                          <p className="text-xs text-green-400 font-medium flex items-center gap-2">
+                            ✅ Submitted to blockchain
+                          </p>
+                        ) : (
+                          <p className="text-xs text-green-400 font-medium">Click to submit (1 HC fee)</p>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })
+              )}
+            </div>
+
+            <div className="sticky bottom-0 bg-gray-900 border-t border-gray-800 p-4">
+              <button
+                onClick={() => setShowProjectSelector(false)}
+                className="w-full py-3 bg-gray-800 text-white rounded-lg hover:bg-gray-700 transition font-medium"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Submission Status Modal */}
+      {showSubmissionModal && submissionStatus && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-md overflow-hidden">
+            <div className="p-6 text-center">
+              {submissionStatus.type === 'loading' && (
+                <div className="space-y-4">
+                  <div className="w-12 h-12 mx-auto border-4 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
+                  <h3 className="text-lg font-semibold text-white">{submissionStatus.message}</h3>
+                  <p className="text-gray-400 text-sm">{submissionStatus.details}</p>
+                </div>
+              )}
+              
+              {submissionStatus.type === 'success' && (
+                <div className="space-y-4">
+                  <div className="w-12 h-12 mx-auto bg-green-500 rounded-full flex items-center justify-center">
+                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                  </div>
+                  <h3 className="text-lg font-semibold text-green-400">{submissionStatus.message}</h3>
+                  <p className="text-gray-400 text-sm">{submissionStatus.details}</p>
+                  <p className="text-xs text-gray-500">This modal will close automatically</p>
+                </div>
+              )}
+              
+              {submissionStatus.type === 'error' && (
+                <div className="space-y-4">
+                  <div className="w-12 h-12 mx-auto bg-red-500 rounded-full flex items-center justify-center">
+                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </div>
+                  <h3 className="text-lg font-semibold text-red-400">{submissionStatus.message}</h3>
+                  <p className="text-gray-400 text-sm">{submissionStatus.details}</p>
+                  <button
+                    onClick={() => setShowSubmissionModal(false)}
+                    className="px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-700 transition"
+                  >
+                    Close
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>

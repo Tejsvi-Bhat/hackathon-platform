@@ -2,19 +2,20 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { 
-  LayoutDashboard, 
-  Award, 
-  Compass, 
-  Users, 
-  MessageSquare, 
-  HelpCircle, 
+import {
+  LayoutDashboard,
+  Award,
+  Compass,
+  Users,
+  MessageSquare,
+  HelpCircle,
   MoreHorizontal,
-  ChevronDown 
+  ChevronDown,
+  Zap,
+  ZapOff
 } from 'lucide-react';
 import { useState } from 'react';
-
-interface NavItem {
+import { useBlockchain } from '@/app/context/BlockchainContext';interface NavItem {
   title: string;
   icon: any;
   href?: string;
@@ -38,6 +39,7 @@ const navItems: NavItem[] = [
     subItems: [
       { title: 'Hackathons', href: '/' },
       { title: 'Project Archive', href: '/projects' },
+      { title: 'Blockchain Demo', href: '/demo-blockchain' },
     ],
   },
   {
@@ -63,6 +65,7 @@ const navItems: NavItem[] = [
 export default function Sidebar() {
   const pathname = usePathname();
   const [expandedItems, setExpandedItems] = useState<string[]>(['Explore']);
+  const { isBlockchainMode, toggleBlockchainMode } = useBlockchain();
 
   const toggleExpand = (title: string) => {
     setExpandedItems(prev =>
@@ -89,6 +92,38 @@ export default function Sidebar() {
 
       {/* Navigation */}
       <nav className="p-4 space-y-2">
+        {/* Blockchain Mode Toggle */}
+        <button
+          onClick={toggleBlockchainMode}
+          className={`w-full flex items-center justify-between px-4 py-3 rounded-lg transition group ${
+            isBlockchainMode
+              ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white'
+              : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+          }`}
+        >
+          <div className="flex items-center gap-3">
+            {isBlockchainMode ? (
+              <Zap className="w-5 h-5" />
+            ) : (
+              <ZapOff className="w-5 h-5" />
+            )}
+            <span className="font-medium">Blockchain Mode</span>
+          </div>
+          <div
+            className={`w-11 h-6 rounded-full transition-all duration-300 ${
+              isBlockchainMode ? 'bg-white/30' : 'bg-gray-600'
+            }`}
+          >
+            <div
+              className={`w-5 h-5 rounded-full transition-all duration-300 mt-0.5 ${
+                isBlockchainMode
+                  ? 'ml-5 bg-white'
+                  : 'ml-0.5 bg-gray-400'
+              }`}
+            />
+          </div>
+        </button>
+
         {navItems.map((item) => {
           const Icon = item.icon;
           const isExpanded = expandedItems.includes(item.title);
