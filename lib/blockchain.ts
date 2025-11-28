@@ -179,7 +179,21 @@ export const releaseScoresOnChain = async (hackathonId: number) => {
 
 export const getHackathonFromChain = async (hackathonId: number) => {
   const contract = await getContract();
-  return await contract.getHackathon(hackathonId);
+  const rawHackathon = await contract.getHackathon(hackathonId);
+  
+  // Convert BigNumber objects to safe types to prevent serialization issues
+  return {
+    name: rawHackathon.name,
+    description: rawHackathon.description,
+    organizer: rawHackathon.organizer,
+    prizePoolWei: rawHackathon.prizePoolWei.toString(),
+    projectCount: Number(rawHackathon.projectCount.toString()),
+    judgeCount: Number(rawHackathon.judgeCount.toString()),
+    active: rawHackathon.active,
+    registrationDeadline: Number(rawHackathon.registrationDeadline.toString()),
+    startDate: Number(rawHackathon.startDate.toString()),
+    endDate: Number(rawHackathon.endDate.toString())
+  };
 };
 
 export const getHackathonsForJudge = async (judgeAddress: string) => {
@@ -190,26 +204,33 @@ export const getHackathonsForJudge = async (judgeAddress: string) => {
 
 export const getPrizesFromChain = async (hackathonId: number) => {
   const contract = await getContract();
-  return await contract.getPrizes(hackathonId);
+  const rawPrizes = await contract.getPrizes(hackathonId);
+  
+  // Convert BigNumber objects to plain numbers to prevent serialization issues
+  return rawPrizes.map((prize: any) => ({
+    title: prize.title,
+    amount: Number(prize.amount.toString()),
+    position: Number(prize.position.toString())
+  }));
 };
 
 export const getProjectsFromChain = async (hackathonId: number) => {
   const contract = await getContract();
-  const hackathon = await contract.getHackathon(hackathonId);
-  const projectCount = Number(hackathon.projectCount);
+  const rawHackathon = await contract.getHackathon(hackathonId);
+  const projectCount = Number(rawHackathon.projectCount.toString());
   
   const projects = [];
   for (let i = 1; i <= projectCount; i++) {
     try {
-      const project = await contract.getProject(hackathonId, i);
+      const rawProject = await contract.getProject(hackathonId, i);
       projects.push({
         id: i,
-        name: project.name,
-        description: project.description,
-        githubUrl: project.githubUrl,
-        demoUrl: project.demoUrl,
-        submitter: project.participant,
-        submissionTimestamp: Number(project.submissionTimestamp)
+        name: rawProject.name,
+        description: rawProject.description,
+        githubUrl: rawProject.githubUrl,
+        demoUrl: rawProject.demoUrl,
+        submitter: rawProject.participant,
+        submissionTimestamp: Number(rawProject.submissionTimestamp.toString())
       });
     } catch (error) {
       console.log(`Project ${i} not found for hackathon ${hackathonId}`);
