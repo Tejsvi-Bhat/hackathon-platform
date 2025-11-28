@@ -394,7 +394,11 @@ app.get('/api/hackathons/:id', async (req: Request, res: Response) => {
         try {
           projects = await getProjectsFromChain(hackathonId);
           
-          // Projects will use blockchain project IDs for consistency
+          // Map contract project IDs to blockchain project IDs format (hackathon-project)
+          projects = projects.map((project: any, index: number) => ({
+            ...project,
+            id: `${hackathonId}-${project.id || (index + 1)}` // Convert to "3-1", "3-2" format
+          }));
           
         } catch (error) {
           console.log(`No projects found for hackathon ${hackathonId}`);
