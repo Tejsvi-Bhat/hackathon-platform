@@ -5,6 +5,11 @@ import pool from './db.js';
 
 const router = express.Router();
 
+// Test endpoint
+router.get('/test', (req, res) => {
+  res.json({ message: 'Blockchain auth router is working' });
+});
+
 // JWT secret
 const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-in-production';
 
@@ -27,15 +32,21 @@ function generateToken(payload) {
 // Get current user info
 router.get('/me', async (req, res) => {
   try {
+    console.log('🔍 [BLOCKCHAIN-AUTH] /me endpoint called');
+    console.log('🔍 [BLOCKCHAIN-AUTH] Headers:', req.headers.authorization);
+    
     const token = req.headers.authorization?.replace('Bearer ', '');
     
     if (!token) {
+      console.log('❌ [BLOCKCHAIN-AUTH] No token provided');
       return res.status(401).json({ error: 'No token provided' });
     }
 
     const decoded = jwt.verify(token, JWT_SECRET);
+    console.log('🔍 [BLOCKCHAIN-AUTH] Decoded token:', decoded);
     
     if (!decoded.isBlockchainUser) {
+      console.log('❌ [BLOCKCHAIN-AUTH] Not a blockchain token');
       return res.status(401).json({ error: 'Invalid blockchain token' });
     }
 
@@ -46,12 +57,14 @@ router.get('/me', async (req, res) => {
     );
 
     if (userResult.rows.length === 0) {
+      console.log('❌ [BLOCKCHAIN-AUTH] User not found in database');
       return res.status(404).json({ error: 'User not found' });
     }
 
+    console.log('✅ [BLOCKCHAIN-AUTH] User found:', userResult.rows[0]);
     res.json(userResult.rows[0]);
   } catch (error) {
-    console.error('Get user error:', error);
+    console.error('❌ [BLOCKCHAIN-AUTH] Get user error:', error);
     res.status(401).json({ error: 'Invalid token' });
   }
 });
