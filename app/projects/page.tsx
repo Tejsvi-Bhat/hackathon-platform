@@ -39,7 +39,7 @@ export default function ProjectsArchive() {
   const fetchProjects = async () => {
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-      const endpoint = isBlockchainMode ? '/api/blockchain/projects' : '/api/projects';
+      const endpoint = isBlockchainMode ? '/api/projects?mode=blockchain' : '/api/projects';
       console.log('Blockchain mode:', isBlockchainMode);
       console.log('Fetching projects from:', `${apiUrl}${endpoint}`);
       
