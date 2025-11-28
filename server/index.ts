@@ -1582,17 +1582,26 @@ app.get('/api/projects/:id/can-score', authenticate, authorize('judge'), async (
   try {
     const { id } = req.params;
 
-    // Get project's hackathon
-    const projectResult = await pool.query(
-      'SELECT hackathon_id FROM projects WHERE id = $1',
-      [id]
-    );
+    // Get project's hackathon - check both database ID and blockchain project ID
+    let projectQuery = 'SELECT id, hackathon_id FROM projects WHERE ';
+    let queryParam = id;
+
+    // Check if it's a numeric ID (database ID) or string ID (blockchain project ID)
+    if (/^\d+$/.test(id)) {
+      projectQuery += 'id = $1';
+    } else {
+      projectQuery += 'blockchain_project_id = $1';
+    }
+
+    const projectResult = await pool.query(projectQuery, [queryParam]);
 
     if (projectResult.rows.length === 0) {
       return res.status(404).json({ error: 'Project not found' });
     }
 
-    const hackathonId = projectResult.rows[0].hackathon_id;
+    const project = projectResult.rows[0];
+    const projectId = project.id; // Use database ID for further queries
+    const hackathonId = project.hackathon_id;
 
     if (!hackathonId) {
       return res.json({ canScore: false, existingScore: null });
@@ -1608,10 +1617,10 @@ app.get('/api/projects/:id/can-score', authenticate, authorize('judge'), async (
       return res.json({ canScore: false, existingScore: null });
     }
 
-    // Check for existing score
+    // Check for existing score (use database project ID)
     const scoreResult = await pool.query(
       'SELECT * FROM scores WHERE project_id = $1 AND judge_id = $2',
-      [id, req.user!.userId]
+      [projectId, req.user!.userId]
     );
 
     res.json({
@@ -1629,11 +1638,26 @@ app.get('/api/projects/:id/average-score', async (req: Request, res: Response) =
   try {
     const { id } = req.params;
 
+    // Handle both database ID and blockchain project ID
+    let projectQuery = 'SELECT id FROM projects WHERE ';
+    if (/^\d+$/.test(id)) {
+      projectQuery += 'id = $1';
+    } else {
+      projectQuery += 'blockchain_project_id = $1';
+    }
+
+    const project = await pool.query(projectQuery, [id]);
+    if (project.rows.length === 0) {
+      return res.status(404).json({ error: 'Project not found' });
+    }
+
+    const projectId = project.rows[0].id; // Use database ID
+
     const result = await pool.query(
       `SELECT AVG(total_score) as average_score, COUNT(*) as judge_count
        FROM scores
        WHERE project_id = $1`,
-      [id]
+      [projectId]
     );
 
     const avgScore = result.rows[0].average_score;
@@ -1945,12 +1969,20 @@ app.post('/api/projects/:id/score', authenticate, authorize('judge'), async (req
     const { technical_score, innovation_score, presentation_score, impact_score, feedback } = req.body;
     const isBlockchainUser = !!req.user!.walletAddress;
 
-    // Verify project exists
-    const project = await pool.query('SELECT hackathon_id FROM projects WHERE id = $1', [id]);
+    // Verify project exists - handle both database ID and blockchain project ID
+    let projectQuery = 'SELECT id, hackathon_id FROM projects WHERE ';
+    if (/^\d+$/.test(id)) {
+      projectQuery += 'id = $1';
+    } else {
+      projectQuery += 'blockchain_project_id = $1';
+    }
+
+    const project = await pool.query(projectQuery, [id]);
     if (project.rows.length === 0) {
       return res.status(404).json({ error: 'Project not found' });
     }
 
+    const projectId = project.rows[0].id; // Use database ID for scoring
     const hackathonId = project.rows[0].hackathon_id;
 
     // For blockchain judges, allow scoring active/ongoing hackathons
@@ -2000,7 +2032,7 @@ app.post('/api/projects/:id/score', authenticate, authorize('judge'), async (req
          feedback = EXCLUDED.feedback,
          scored_at = CURRENT_TIMESTAMP
        RETURNING *`,
-      [id, req.user!.userId, judgeAddress, technical_score, innovation_score, 
+      [projectId, req.user!.userId, judgeAddress, technical_score, innovation_score, 
        presentation_score, impact_score, feedback]
     );
 

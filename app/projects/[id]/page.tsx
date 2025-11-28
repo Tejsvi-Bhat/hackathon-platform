@@ -127,7 +127,7 @@ export default function ProjectDetail() {
 
       // Fetch project data
       const projectEndpoint = isBlockchainMode ? 
-        `/api/blockchain/projects/${projectId}` : 
+        `/api/projects/${projectId}` : 
         `/api/projects/${projectId}`;
       
       console.log('Fetching from endpoint:', `${apiUrl}${projectEndpoint}`);
