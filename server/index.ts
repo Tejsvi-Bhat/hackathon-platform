@@ -126,7 +126,7 @@ app.get('/api/debug-judge/:hackathonId/:walletAddress', async (req: any, res: Re
     });
   } catch (error) {
     console.error('❌ [DEBUG-JUDGE] Error:', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: error instanceof Error ? error.message : 'Unknown error' });
   }
 });
 
@@ -1744,14 +1744,14 @@ app.get('/api/projects/:id/can-score', authenticateUnified, async (req: AuthRequ
         console.log(`✅ [CAN-SCORE] User authorized as blockchain judge`);
       } catch (error) {
         console.error('❌ [CAN-SCORE] Error fetching judges from contract:', error);
-        console.error('❌ [CAN-SCORE] Error stack:', error.stack);
+        console.error('❌ [CAN-SCORE] Error stack:', error instanceof Error ? error.stack : 'No stack trace');
         return res.json({ 
           canScore: false, 
           existingScore: null,
           debug: {
             hackathonId: blockchainHackathonId,
             userWallet: req.user!.walletAddress,
-            error: error.message,
+            error: error instanceof Error ? error.message : 'Unknown error',
             reason: 'Failed to fetch judges from smart contract'
           }
         });
