@@ -96,6 +96,40 @@ app.use(cookieParser());
 // Blockchain authentication routes
 app.use('/api/blockchain-auth', blockchainAuthRouter);
 
+// Debug endpoint for judge authorization
+app.get('/api/debug-judge/:hackathonId/:walletAddress', async (req: any, res: Response) => {
+  try {
+    const { hackathonId, walletAddress } = req.params;
+    console.log(`🔍 [DEBUG-JUDGE] Hackathon ID: ${hackathonId}, Wallet: ${walletAddress}`);
+    
+    const { getJudgesFromChain, isJudgeOnChain } = await import('../lib/blockchain.js');
+    
+    // Method 1: Get all judges and check
+    const allJudges = await getJudgesFromChain(parseInt(hackathonId));
+    console.log(`🔍 [DEBUG-JUDGE] All judges:`, allJudges);
+    
+    const isJudgeByList = allJudges.some((judge: any) => 
+      judge.address?.toLowerCase() === walletAddress.toLowerCase()
+    );
+    console.log(`🔍 [DEBUG-JUDGE] Is judge by list: ${isJudgeByList}`);
+    
+    // Method 2: Use direct isJudge function
+    const isJudgeDirect = await isJudgeOnChain(parseInt(hackathonId), walletAddress);
+    console.log(`🔍 [DEBUG-JUDGE] Is judge direct: ${isJudgeDirect}`);
+    
+    res.json({
+      hackathonId: parseInt(hackathonId),
+      walletAddress,
+      allJudges,
+      isJudgeByList,
+      isJudgeDirect
+    });
+  } catch (error) {
+    console.error('❌ [DEBUG-JUDGE] Error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // ============ AUTH ROUTES ============
 
 // Register
@@ -1605,7 +1639,14 @@ app.patch('/api/projects/:id/visibility', authenticate, async (req: AuthRequest,
 app.get('/api/projects/:id/can-score', authenticateUnified, async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
-    console.log(`🔍 [CAN-SCORE] Project ID: ${id}, User: ${req.user!.userId}, Wallet: ${req.user!.walletAddress}`);
+    console.log(`🔍 [CAN-SCORE] ===== STARTING CAN-SCORE CHECK =====`);
+    console.log(`🔍 [CAN-SCORE] Input - Project ID: ${id}`);
+    console.log(`🔍 [CAN-SCORE] Input - User from token:`, {
+      userId: req.user!.userId,
+      walletAddress: req.user!.walletAddress,
+      role: req.user!.role,
+      isBlockchainUser: req.user!.isBlockchainUser
+    });
     
     // Check if user is a judge
     if (req.user!.role !== 'judge') {
@@ -1659,26 +1700,61 @@ app.get('/api/projects/:id/can-score', authenticateUnified, async (req: AuthRequ
     if (isBlockchainHackathon) {
       // For blockchain hackathons, check judges from smart contract
       try {
+        console.log(`🔍 [CAN-SCORE] About to import blockchain module...`);
         const { getJudgesFromChain } = await import('../lib/blockchain.js');
+        console.log(`✅ [CAN-SCORE] Successfully imported blockchain module`);
+        
+        console.log(`🔍 [CAN-SCORE] Calling getJudgesFromChain(${blockchainHackathonId})`);
         const contractJudges = await getJudgesFromChain(blockchainHackathonId);
-        console.log(`🔍 [CAN-SCORE] Contract judges:`, contractJudges);
+        console.log(`🔍 [CAN-SCORE] Contract judges raw result:`, contractJudges);
+        console.log(`🔍 [CAN-SCORE] Contract judges type:`, typeof contractJudges);
+        console.log(`🔍 [CAN-SCORE] Contract judges length:`, contractJudges.length);
         
         const userWalletAddress = req.user!.walletAddress?.toLowerCase();
-        console.log(`🔍 [CAN-SCORE] User wallet address: ${userWalletAddress}`);
+        console.log(`🔍 [CAN-SCORE] User wallet address (from token):`, req.user!.walletAddress);
+        console.log(`🔍 [CAN-SCORE] User wallet address (lowercased):`, userWalletAddress);
+        
+        // Check each judge individually
+        contractJudges.forEach((judge: any, index: number) => {
+          console.log(`🔍 [CAN-SCORE] Judge ${index}:`, judge);
+          console.log(`🔍 [CAN-SCORE] Judge ${index} type:`, typeof judge);
+          console.log(`🔍 [CAN-SCORE] Judge ${index} address property:`, judge.address);
+          console.log(`🔍 [CAN-SCORE] Judge ${index} lowercased:`, (judge.address || judge).toLowerCase());
+          console.log(`🔍 [CAN-SCORE] Judge ${index} matches user:`, (judge.address || judge).toLowerCase() === userWalletAddress);
+        });
         
         const isAuthorizedJudge = contractJudges.some((judge: any) => 
-          judge.address?.toLowerCase() === userWalletAddress
+          (judge.address || judge).toLowerCase() === userWalletAddress
         );
-        console.log(`🔍 [CAN-SCORE] Is authorized judge: ${isAuthorizedJudge}`);
+        console.log(`🔍 [CAN-SCORE] Is authorized judge (final check):`, isAuthorizedJudge);
         
         if (!isAuthorizedJudge) {
           console.log(`❌ [CAN-SCORE] User not authorized to judge this hackathon`);
-          return res.json({ canScore: false, existingScore: null });
+          return res.json({ 
+            canScore: false, 
+            existingScore: null,
+            debug: {
+              hackathonId: blockchainHackathonId,
+              userWallet: userWalletAddress,
+              contractJudges: contractJudges,
+              reason: 'User wallet not found in contract judges list'
+            }
+          });
         }
         console.log(`✅ [CAN-SCORE] User authorized as blockchain judge`);
       } catch (error) {
         console.error('❌ [CAN-SCORE] Error fetching judges from contract:', error);
-        return res.json({ canScore: false, existingScore: null });
+        console.error('❌ [CAN-SCORE] Error stack:', error.stack);
+        return res.json({ 
+          canScore: false, 
+          existingScore: null,
+          debug: {
+            hackathonId: blockchainHackathonId,
+            userWallet: req.user!.walletAddress,
+            error: error.message,
+            reason: 'Failed to fetch judges from smart contract'
+          }
+        });
       }
     } else {
       // For regular hackathons, require explicit judge assignment in database
@@ -1707,7 +1783,14 @@ app.get('/api/projects/:id/can-score', authenticateUnified, async (req: AuthRequ
     console.log(`✅ [CAN-SCORE] Final result: canScore=true`);
     res.json({
       canScore: true,
-      existingScore: scoreResult.rows[0] || null
+      existingScore: scoreResult.rows[0] || null,
+      debug: {
+        hackathonId: blockchainHackathonId,
+        userWallet: req.user!.walletAddress,
+        isBlockchainHackathon,
+        projectId,
+        reason: 'User is authorized judge'
+      }
     });
   } catch (error) {
     console.error('Error checking score permission:', error);
