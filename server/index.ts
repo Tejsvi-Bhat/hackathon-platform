@@ -1643,21 +1643,24 @@ app.get('/api/projects/:id/can-score', authenticateUnified, async (req: AuthRequ
     }
 
     // Check if judge is assigned to this hackathon
-    // For blockchain hackathons, check contract directly
+    // For blockchain mode, hackathon data comes from smart contract
     const hackathonResult = await pool.query(
       'SELECT mode, blockchain_id FROM hackathons WHERE id = $1',
       [hackathonId]
     );
     console.log(`🔍 [CAN-SCORE] Hackathon result:`, hackathonResult.rows);
     
-    const isBlockchainHackathon = hackathonResult.rows[0]?.mode === 'blockchain';
-    console.log(`🔍 [CAN-SCORE] Is blockchain hackathon: ${isBlockchainHackathon}`);
+    // If no hackathon in database, assume it's a blockchain hackathon
+    // and use the hackathon_id as blockchain_id
+    const isBlockchainHackathon = hackathonResult.rows.length === 0 || hackathonResult.rows[0]?.mode === 'blockchain';
+    const blockchainHackathonId = hackathonResult.rows.length === 0 ? hackathonId : hackathonResult.rows[0]?.blockchain_id;
+    console.log(`🔍 [CAN-SCORE] Is blockchain hackathon: ${isBlockchainHackathon}, Blockchain ID: ${blockchainHackathonId}`);
     
     if (isBlockchainHackathon) {
       // For blockchain hackathons, check judges from smart contract
       try {
         const { getJudgesFromChain } = await import('../lib/blockchain.js');
-        const contractJudges = await getJudgesFromChain(hackathonResult.rows[0].blockchain_id);
+        const contractJudges = await getJudgesFromChain(blockchainHackathonId);
         console.log(`🔍 [CAN-SCORE] Contract judges:`, contractJudges);
         
         const userWalletAddress = req.user!.walletAddress?.toLowerCase();
