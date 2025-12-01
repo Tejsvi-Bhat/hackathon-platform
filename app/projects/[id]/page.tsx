@@ -223,7 +223,7 @@ export default function ProjectDetail() {
 
   const handleSaveEdit = async () => {
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('token') || localStorage.getItem('blockchainToken');
       const res = await fetch(`${apiUrl}/api/projects/${projectId}`, {
         method: 'PUT',
         headers: {
@@ -246,7 +246,7 @@ export default function ProjectDetail() {
 
   const handleToggleVisibility = async () => {
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('token') || localStorage.getItem('blockchainToken');
       const res = await fetch(`${apiUrl}/api/projects/${projectId}/visibility`, {
         method: 'PATCH',
         headers: {
@@ -268,7 +268,9 @@ export default function ProjectDetail() {
 
   const handleSubmitScore = async () => {
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('token') || localStorage.getItem('blockchainToken');
+      console.log('🔍 Submitting score with token:', token ? 'Token exists' : 'No token found');
+      
       const res = await fetch(`${apiUrl}/api/projects/${projectId}/score`, {
         method: 'POST',
         headers: {
@@ -278,7 +280,13 @@ export default function ProjectDetail() {
         body: JSON.stringify(scores)
       });
 
-      if (!res.ok) throw new Error('Failed to submit score');
+      console.log('🔍 Score submission response status:', res.status);
+      
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.log('❌ Score submission error:', errorText);
+        throw new Error('Failed to submit score');
+      }
 
       alert('Score submitted successfully!');
       setScoreMode(false);
