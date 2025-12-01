@@ -2202,24 +2202,47 @@ app.post('/api/projects/:id/score', authenticateUnified, async (req: AuthRequest
     }
 
     // Insert or update score
-    console.log(`🔍 [SCORE-SUBMIT] Inserting score - ProjectID: ${projectId}, JudgeID: ${req.user!.userId}, JudgeAddress: ${judgeAddress}`);
+    const judgeIdForDb = isBlockchainUser ? null : req.user!.userId;
+    console.log(`🔍 [SCORE-SUBMIT] Inserting score - ProjectID: ${projectId}, JudgeID: ${judgeIdForDb}, JudgeAddress: ${judgeAddress}`);
     
-    const result = await pool.query(
-      `INSERT INTO scores (project_id, judge_id, judge_address, technical_score, innovation_score, 
-                          presentation_score, impact_score, feedback)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-       ON CONFLICT (project_id, judge_id)
-       DO UPDATE SET 
-         technical_score = EXCLUDED.technical_score,
-         innovation_score = EXCLUDED.innovation_score,
-         presentation_score = EXCLUDED.presentation_score,
-         impact_score = EXCLUDED.impact_score,
-         feedback = EXCLUDED.feedback,
-         scored_at = CURRENT_TIMESTAMP
-       RETURNING *`,
-      [projectId, req.user!.userId, judgeAddress, technical_score, innovation_score, 
-       presentation_score, impact_score, feedback]
-    );
+    let result;
+    if (isBlockchainUser) {
+      // For blockchain users, use judge_address and check for existing scores by address
+      result = await pool.query(
+        `INSERT INTO scores (project_id, judge_id, judge_address, technical_score, innovation_score, 
+                            presentation_score, impact_score, feedback)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+         ON CONFLICT (project_id, judge_address)
+         DO UPDATE SET 
+           technical_score = EXCLUDED.technical_score,
+           innovation_score = EXCLUDED.innovation_score,
+           presentation_score = EXCLUDED.presentation_score,
+           impact_score = EXCLUDED.impact_score,
+           feedback = EXCLUDED.feedback,
+           scored_at = CURRENT_TIMESTAMP
+         RETURNING *`,
+        [projectId, null, judgeAddress, technical_score, innovation_score, 
+         presentation_score, impact_score, feedback]
+      );
+    } else {
+      // For database users, use judge_id and existing conflict resolution
+      result = await pool.query(
+        `INSERT INTO scores (project_id, judge_id, judge_address, technical_score, innovation_score, 
+                            presentation_score, impact_score, feedback)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+         ON CONFLICT (project_id, judge_id)
+         DO UPDATE SET 
+           technical_score = EXCLUDED.technical_score,
+           innovation_score = EXCLUDED.innovation_score,
+           presentation_score = EXCLUDED.presentation_score,
+           impact_score = EXCLUDED.impact_score,
+           feedback = EXCLUDED.feedback,
+           scored_at = CURRENT_TIMESTAMP
+         RETURNING *`,
+        [projectId, req.user!.userId, judgeAddress, technical_score, innovation_score, 
+         presentation_score, impact_score, feedback]
+      );
+    }
 
     console.log(`✅ [SCORE-SUBMIT] Score saved successfully:`, result.rows[0]);
 
