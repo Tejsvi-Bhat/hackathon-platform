@@ -2128,11 +2128,29 @@ app.get('/api/hackathons/:id/projects-to-judge', authenticate, authorize('judge'
 
 // Submit or update score for a project
 // Submit score for a project (updated to support blockchain mode)
-app.post('/api/projects/:id/score', authenticate, authorize('judge'), async (req: AuthRequest, res: Response) => {
+app.post('/api/projects/:id/score', authenticateUnified, async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
     const { technical_score, innovation_score, presentation_score, impact_score, feedback } = req.body;
+    
+    console.log(`🔍 [SCORE-SUBMIT] ===== STARTING SCORE SUBMISSION =====`);
+    console.log(`🔍 [SCORE-SUBMIT] Project ID: ${id}`);
+    console.log(`🔍 [SCORE-SUBMIT] Scores:`, { technical_score, innovation_score, presentation_score, impact_score });
+    console.log(`🔍 [SCORE-SUBMIT] User:`, {
+      userId: req.user!.userId,
+      walletAddress: req.user!.walletAddress,
+      role: req.user!.role,
+      isBlockchainUser: req.user!.isBlockchainUser
+    });
+    
+    // Check if user is a judge
+    if (req.user!.role !== 'judge') {
+      console.log(`❌ [SCORE-SUBMIT] User role is ${req.user!.role}, not judge`);
+      return res.status(403).json({ error: 'Only judges can score projects' });
+    }
+
     const isBlockchainUser = !!req.user!.walletAddress;
+    console.log(`🔍 [SCORE-SUBMIT] Is blockchain user: ${isBlockchainUser}`);
 
     // Verify project exists - handle both database ID and blockchain project ID
     let projectQuery = 'SELECT id, hackathon_id FROM projects WHERE ';
@@ -2184,6 +2202,8 @@ app.post('/api/projects/:id/score', authenticate, authorize('judge'), async (req
     }
 
     // Insert or update score
+    console.log(`🔍 [SCORE-SUBMIT] Inserting score - ProjectID: ${projectId}, JudgeID: ${req.user!.userId}, JudgeAddress: ${judgeAddress}`);
+    
     const result = await pool.query(
       `INSERT INTO scores (project_id, judge_id, judge_address, technical_score, innovation_score, 
                           presentation_score, impact_score, feedback)
@@ -2201,10 +2221,28 @@ app.post('/api/projects/:id/score', authenticate, authorize('judge'), async (req
        presentation_score, impact_score, feedback]
     );
 
+    console.log(`✅ [SCORE-SUBMIT] Score saved successfully:`, result.rows[0]);
+
+    // TODO: Submit to blockchain if in blockchain mode
+    if (isBlockchainUser && judgeAddress) {
+      try {
+        console.log(`🔗 [SCORE-SUBMIT] Attempting to submit to blockchain...`);
+        // Add blockchain submission logic here if needed
+        console.log(`✅ [SCORE-SUBMIT] Blockchain submission would go here`);
+      } catch (blockchainError) {
+        console.error(`❌ [SCORE-SUBMIT] Blockchain submission failed:`, blockchainError);
+        // Don't fail the whole request if blockchain submission fails
+      }
+    }
+
     res.status(201).json(result.rows[0]);
   } catch (error) {
-    console.error('Error scoring project:', error);
-    res.status(500).json({ error: 'Failed to score project' });
+    console.error('❌ [SCORE-SUBMIT] Error scoring project:', error);
+    console.error('❌ [SCORE-SUBMIT] Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+    res.status(500).json({ 
+      error: 'Failed to score project',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
   }
 });
 
