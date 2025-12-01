@@ -155,16 +155,23 @@ export default function ProjectDetail() {
         console.log('Is team member:', isMember, 'User ID:', userData.id, 'Team members:', projectData.team_members);
       }
 
-      // Check if user can score (judge)
+      // Check if user can score (judge) - independent of user data
       if (token && projectData.hackathon_id) {
+        console.log('🔍 Checking can-score with token:', token ? 'Token exists' : 'No token');
+        console.log('🔍 Project hackathon_id:', projectData.hackathon_id);
+        
         const canScoreRes = await fetch(
           `${apiUrl}/api/projects/${projectId}/can-score`,
           {
             headers: { 'Authorization': `Bearer ${token}` }
           }
         );
+        
+        console.log('🔍 Can-score response status:', canScoreRes.status);
+        
         if (canScoreRes.ok) {
           const { canScore, existingScore } = await canScoreRes.json();
+          console.log('🔍 Can-score result:', { canScore, existingScore });
           setCanScore(canScore);
           if (existingScore) {
             setExistingScore(existingScore);
@@ -176,7 +183,12 @@ export default function ProjectDetail() {
               feedback: existingScore.feedback || ''
             });
           }
+        } else {
+          const errorText = await canScoreRes.text();
+          console.log('❌ Can-score error:', errorText);
         }
+      } else {
+        console.log('❌ Cannot check can-score - Token:', !!token, 'Hackathon ID:', projectData.hackathon_id);
       }
 
       // Fetch average score
